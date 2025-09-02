@@ -2,20 +2,21 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { PoolCard } from '@/components/PoolCard';
 import { PoolsTable } from '@/components/PoolsTable';
 import { WalletConnectionDialog } from '@/components/WalletConnectionDialog';
-import { useAuth } from '@/contexts/AuthContext';
 import { Pool, PoolCategory } from '@/types';
 import { getPoolsWithFallback } from '@/lib/api';
-import { Wallet, Grid, Table as TableIcon, Filter, Lock, AlertCircle, CheckCircle } from 'lucide-react';
+import { Grid, Table as TableIcon, Filter, Lock, AlertCircle, CheckCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function DashboardPage() {
   const router = useRouter();
-  const { walletConnection, userAuth, isYieldAggregatorUnlocked } = useAuth();
+  const { isYieldAggregatorUnlocked } = useAuth();
   const [pools, setPools] = useState<Pool[]>([]);
   const [filteredPools, setFilteredPools] = useState<Pool[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<PoolCategory | 'All'>('All');

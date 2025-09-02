@@ -41,30 +41,29 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Connect to MetaMask wallet
   const connectWallet = async () => {
-    if (!isMetaMaskAvailable) {
-      alert('MetaMask is not installed. Please install MetaMask to connect your wallet.');
-      return;
+    if (!window.ethereum) {
+      throw new Error('MetaMask is not installed. Please install MetaMask to continue.');
     }
 
     try {
       const accounts = await window.ethereum.request({
         method: 'eth_requestAccounts',
-      });
-
-      if (accounts.length > 0) {
-        const chainId = await window.ethereum.request({
-          method: 'eth_chainId',
-        });
-
+      }) as string[];
+      
+      if (accounts && Array.isArray(accounts) && accounts.length > 0) {
+        const account = accounts[0];
+        const chainId = await window.ethereum.request({ method: 'eth_chainId' }) as string;
         setWalletConnection({
           isConnected: true,
-          address: accounts[0],
-          chainId: parseInt(chainId, 16),
+          address: account,
+          chainId: parseInt(chainId, 16)
         });
+      } else {
+        throw new Error('No accounts found');
       }
     } catch (error) {
       console.error('Error connecting wallet:', error);
-      alert('Failed to connect wallet. Please try again.');
+      throw error;
     }
   };
 
@@ -103,7 +102,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Listen for wallet changes
   useEffect(() => {
-    if (isMetaMaskAvailable) {
+    if (isMetaMaskAvailable && window.ethereum) {
       const handleAccountsChanged = (accounts: string[]) => {
         if (accounts.length === 0) {
           disconnectWallet();
@@ -126,8 +125,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       window.ethereum.on('chainChanged', handleChainChanged);
 
       return () => {
-        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-        window.ethereum.removeListener('chainChanged', handleChainChanged);
+        if (window.ethereum) {
+          window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+          window.ethereum.removeListener('chainChanged', handleChainChanged);
+        }
       };
     }
   }, [isMetaMaskAvailable]);

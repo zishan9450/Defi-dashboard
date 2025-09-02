@@ -1,11 +1,9 @@
 'use client';
 
 import React from 'react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Pool } from '@/types';
 import { formatTVL, formatAPY } from '@/lib/api';
-import { Lock, TrendingUp, DollarSign, Activity } from 'lucide-react';
 
 interface PoolsTableProps {
   pools: Pool[];

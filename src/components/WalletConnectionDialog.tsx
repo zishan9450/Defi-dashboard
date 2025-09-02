@@ -4,14 +4,14 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
-import { Wallet, Lock, CheckCircle } from 'lucide-react';
+import { Lock } from 'lucide-react';
 
 interface WalletConnectionDialogProps {
   children: React.ReactNode;
 }
 
 export function WalletConnectionDialog({ children }: WalletConnectionDialogProps) {
-  const { walletConnection, connectWallet, isYieldAggregatorUnlocked } = useAuth();
+  const { walletConnection, connectWallet } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');

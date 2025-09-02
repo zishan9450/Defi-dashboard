@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect, use } from 'react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { APYChart } from '@/components/APYChart';
 import { Pool, HistoricalAPY } from '@/types';

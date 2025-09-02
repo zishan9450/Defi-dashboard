@@ -1,11 +1,10 @@
 'use client';
 
 import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Pool } from '@/types';
 import { formatTVL, formatAPY } from '@/lib/api';
-import { Lock, TrendingUp, DollarSign, Activity } from 'lucide-react';
+import { TrendingUp, Lock } from 'lucide-react';
 
 interface PoolCardProps {
   pool: Pool;
