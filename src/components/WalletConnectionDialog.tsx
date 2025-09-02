@@ -14,16 +14,14 @@ export function WalletConnectionDialog({ children }: WalletConnectionDialogProps
   const { walletConnection, connectWallet } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
 
   const handleWalletConnect = async () => {
     setIsLoading(true);
-    setError('');
     try {
       await connectWallet();
       setIsOpen(false);
     } catch (error) {
-      setError('Failed to connect wallet');
+      console.error('Failed to connect wallet:', error);
     } finally {
       setIsLoading(false);
     }
@@ -71,9 +69,9 @@ export function WalletConnectionDialog({ children }: WalletConnectionDialogProps
               </Button>
             </div>
             
-            {error && (
+            {/* error && (
               <div className="text-red-600 text-sm text-center">{error}</div>
-            )}
+            ) */}
           </div>
         )}
       </DialogContent>
