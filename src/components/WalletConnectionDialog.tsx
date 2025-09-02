@@ -1,79 +1,79 @@
 'use client';
 
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
-import { Lock } from 'lucide-react';
+import { Wallet, Check } from 'lucide-react';
 
-interface WalletConnectionDialogProps {
-  children: React.ReactNode;
-}
-
-export function WalletConnectionDialog({ children }: WalletConnectionDialogProps) {
-  const { walletConnection, connectWallet } = useAuth();
+export function WalletConnectionDialog() {
+  const { walletConnection, connectWallet, disconnectWallet } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
 
-  const handleWalletConnect = async () => {
-    setIsLoading(true);
+  const handleConnect = async () => {
     try {
       await connectWallet();
       setIsOpen(false);
     } catch (error) {
       console.error('Failed to connect wallet:', error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
-  const isConnected = walletConnection.isConnected;
+  const handleDisconnect = () => {
+    disconnectWallet();
+    setIsOpen(false);
+  };
+
+  if (walletConnection.isConnected) {
+    return (
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Check className="h-4 w-4 text-green-600" />
+          <span className="hidden sm:inline">Connected</span>
+        </div>
+        <Button variant="outline" onClick={handleDisconnect} size="sm">
+          Disconnect
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        {children}
+        <Button className="gap-2">
+          <Wallet className="h-4 w-4" />
+          Connect Wallet
+        </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md" aria-describedby="dialog-description">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Lock className="h-5 w-5" />
-            Unlock Yield Aggregator
-          </DialogTitle>
+          <DialogTitle>Connect Your Wallet</DialogTitle>
+          <DialogDescription id="dialog-description">
+            Connect your crypto wallet to unlock premium features and access Yield Aggregator pools.
+          </DialogDescription>
         </DialogHeader>
-        <div id="dialog-description" className="sr-only">
-          Connect your MetaMask wallet to unlock Yield Aggregator pools
-        </div>
         
-        {isConnected ? (
-          <div className="text-center py-4">
-            <div className="text-green-600 font-medium mb-2">
-              ✅ Yield Aggregator Unlocked!
-            </div>
+        <div className="space-y-4">
+          <Button 
+            onClick={handleConnect} 
+            className="w-full gap-2"
+            size="lg"
+          >
+            <Wallet className="h-5 w-5" />
+            Connect MetaMask
+          </Button>
+          
+          <div className="text-center">
             <p className="text-sm text-muted-foreground">
-              You can now access Yield Aggregator pools.
+              By connecting your wallet, you agree to our terms of service.
             </p>
           </div>
-        ) : (
-          <div className="space-y-4">
-            <div className="text-center py-4">
-              <p className="text-sm text-muted-foreground mb-4">
-                Connect your MetaMask wallet to unlock Yield Aggregator pools.
-              </p>
-              <Button 
-                onClick={handleWalletConnect} 
-                disabled={isLoading}
-                className="w-full bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
-              >
-                {isLoading ? 'Connecting...' : 'Connect MetaMask'}
-              </Button>
-            </div>
-            
-            {/* error && (
-              <div className="text-red-600 text-sm text-center">{error}</div>
-            ) */}
-          </div>
-        )}
+        </div>
+        
+        <div id="dialog-description" className="sr-only">
+          Dialog for connecting crypto wallet to unlock premium features
+        </div>
       </DialogContent>
     </Dialog>
   );

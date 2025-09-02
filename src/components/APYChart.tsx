@@ -1,152 +1,106 @@
 'use client';
 
-import React from 'react';
+import { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { HistoricalAPY } from '@/types';
+import { fetchHistoricalAPY, getMonthlyAPYData } from '@/lib/api';
 
 interface APYChartProps {
-  data: HistoricalAPY[];
-  poolName: string;
+  poolId: string;
 }
 
-export function APYChart({ data, poolName }: APYChartProps) {
-  // Handle empty data
-  if (!data || data.length === 0) {
-    return (
-      <div className="w-full h-[400px] bg-white rounded-lg border p-4">
-        <div className="mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Historical APY - {poolName}
-          </h3>
-          <p className="text-sm text-gray-500">
-            Last 12 months (1st day of each month)
-          </p>
-        </div>
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center text-gray-500">
-            <p>No historical APY data available</p>
-            <p className="text-sm">This pool may not have sufficient historical data</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
+export function APYChart({ poolId }: APYChartProps) {
+  const [data, setData] = useState<HistoricalAPY[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Transform data for Recharts
-  const chartData = data.map(item => {
-    if (!item.timestamp) {
-      console.warn('Invalid timestamp in data:', item);
-      return null;
-    }
-    
-    // Ensure timestamp is a number
-    const timestamp = typeof item.timestamp === 'string' 
-      ? Math.floor(new Date(item.timestamp).getTime() / 1000)
-      : item.timestamp;
-    
-    return {
-      date: new Date(timestamp * 1000).toLocaleDateString('en-US', {
-        month: 'short',
-        year: 'numeric'
-      }),
-      apy: parseFloat(item.apy.toFixed(2)),
-      timestamp: timestamp
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setLoading(true);
+        const historicalAPY = await fetchHistoricalAPY(poolId);
+        const monthlyData = getMonthlyAPYData(historicalAPY);
+        setData(monthlyData);
+        setError(null);
+      } catch (err) {
+        console.error('Error fetching historical APY:', err);
+        setError('Failed to fetch historical data');
+        setData([]);
+      } finally {
+        setLoading(false);
+      }
     };
-  }).filter(Boolean); // Remove null entries
 
-  if (chartData.length === 0) {
+    if (poolId) {
+      fetchData();
+    }
+  }, [poolId]);
+
+  if (loading) {
     return (
-      <div className="w-full h-[400px] bg-white rounded-lg border p-4">
-        <div className="mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">
-            Historical APY - {poolName}
-          </h3>
-          <p className="text-sm text-gray-500">
-            Last 12 months (1st day of each month)
-          </p>
-        </div>
-        <div className="flex items-center justify-center h-full">
-          <div className="text-center text-gray-500">
-            <p>Unable to process historical data</p>
-            <p className="text-sm">Data format may be invalid</p>
-          </div>
+      <div className="flex items-center justify-center h-64 text-muted-foreground">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-sm">Loading historical data...</p>
         </div>
       </div>
     );
   }
 
-  const CustomTooltip = ({ active, payload, label }: {
-    active?: boolean;
-    payload?: Array<{ value: number }>;
-    label?: string;
-  }) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white p-3 border rounded-lg shadow-lg">
-          <p className="font-medium">{label}</p>
-          <p className="text-green-600 font-semibold">
-            APY: {payload[0].value}%
-          </p>
+  if (error || !data || data.length === 0) {
+    return (
+      <div className="flex items-center justify-center h-64 text-muted-foreground">
+        <div className="text-center">
+          <p className="text-lg font-medium mb-2">No Historical Data Available</p>
+          <p className="text-sm">Historical APY data is not available at the moment.</p>
         </div>
-      );
-    }
-    return null;
-  };
+      </div>
+    );
+  }
+
+  // Ensure data has month labels, fallback to timestamp if not
+  const chartData = data.map(item => ({
+    ...item,
+    month: item.month || (item.timestamp ? 
+      new Date(typeof item.timestamp === 'string' ? parseInt(item.timestamp) * 1000 : item.timestamp * 1000)
+        .toLocaleDateString('en-US', { month: 'short', year: '2-digit' }) : 
+      'Unknown'
+    )
+  }));
 
   return (
-    <div className="w-full h-[400px] bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 p-6 shadow-sm">
-      <div className="mb-6">
-        <h3 className="text-xl font-semibold text-slate-900 mb-2">
-          Historical APY - {poolName}
-        </h3>
-        <p className="text-slate-500 text-sm">
-          Last 12 months (1st day of each month)
-        </p>
-      </div>
-      
-      <ResponsiveContainer width="100%" height="100%">
-        <LineChart data={chartData} margin={{ top: 20, right: 30, left: 40, bottom: 30 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-          <XAxis 
-            dataKey="date" 
-            stroke="#64748b"
-            fontSize={11}
-            tickLine={false}
-            axisLine={false}
-            tick={{ fill: '#64748b' }}
-            dy={10}
-            angle={-45}
-            textAnchor="end"
-            height={60}
-          />
-          <YAxis 
-            stroke="#64748b"
-            fontSize={11}
-            tickLine={false}
-            axisLine={false}
-            tick={{ fill: '#64748b' }}
-            tickFormatter={(value) => `${value}%`}
-            dx={-10}
-            width={50}
-            domain={['dataMin - 0.5', 'dataMax + 0.5']}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <Line 
-            type="monotone" 
-            dataKey="apy" 
-            stroke="url(#apyGradient)"
-            strokeWidth={3}
-            dot={{ fill: '#10b981', strokeWidth: 2, r: 4, stroke: '#ffffff' }}
-            activeDot={{ r: 6, stroke: '#10b981', strokeWidth: 2, fill: '#ffffff' }}
-          />
-          <defs>
-            <linearGradient id="apyGradient" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-              <stop offset="95%" stopColor="#10b981" stopOpacity={0.3}/>
-            </linearGradient>
-          </defs>
-        </LineChart>
-      </ResponsiveContainer>
-    </div>
+    <ResponsiveContainer width="100%" height={300}>
+      <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 20 }}>
+        <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+        <XAxis 
+          dataKey="month" 
+          className="text-xs text-muted-foreground"
+          tick={{ fontSize: 12 }}
+        />
+        <YAxis 
+          className="text-xs text-muted-foreground"
+          tick={{ fontSize: 12 }}
+          tickFormatter={(value) => `${value}%`}
+        />
+        <Tooltip 
+          contentStyle={{
+            backgroundColor: 'hsl(var(--card))',
+            border: '1px solid hsl(var(--border))',
+            borderRadius: '8px',
+            color: 'hsl(var(--foreground))'
+          }}
+          labelStyle={{ color: 'hsl(var(--muted-foreground))' }}
+        />
+        <Line
+          type="monotone"
+          dataKey="apy"
+          stroke="hsl(var(--primary))"
+          strokeWidth={3}
+          dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+          activeDot={{ r: 6, stroke: 'hsl(var(--primary))', strokeWidth: 2 }}
+          className="chart-line"
+        />
+      </LineChart>
+    </ResponsiveContainer>
   );
 }

@@ -1,21 +1,39 @@
 'use client';
 
-import React from 'react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
 import { Pool } from '@/types';
-import { formatTVL, formatAPY } from '@/lib/api';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
+import { Lock, TrendingUp, DollarSign, Activity, ExternalLink } from 'lucide-react';
 
 interface PoolsTableProps {
   pools: Pool[];
-  isYieldAggregatorUnlocked: boolean;
-  onPoolClick: (pool: Pool) => void;
 }
 
-export function PoolsTable({ pools, isYieldAggregatorUnlocked, onPoolClick }: PoolsTableProps) {
+export function PoolsTable({ pools }: PoolsTableProps) {
+  const router = useRouter();
+  const { isYieldAggregatorUnlocked } = useAuth();
+
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case 'Lending':
+        return 'bg-primary/10 text-primary border-primary/20';
+      case 'Liquid Staking':
+        return 'bg-green-500/10 text-green-600 border-green-500/20';
+      case 'Yield Aggregator':
+        return 'bg-purple-500/10 text-purple-600 border-purple-500/20';
+      default:
+        return 'bg-muted text-muted-foreground border-border';
+    }
+  };
+
   const getProjectIcon = (project: string) => {
     const initials = project.split('-').map(word => word[0]).join('').toUpperCase();
     const colors = [
-      'bg-gradient-to-br from-blue-500 to-blue-600',
+      'bg-gradient-to-br from-primary to-primary/80',
       'bg-gradient-to-br from-green-500 to-green-600',
       'bg-gradient-to-br from-purple-500 to-purple-600',
       'bg-gradient-to-br from-orange-500 to-orange-600',
@@ -31,113 +49,120 @@ export function PoolsTable({ pools, isYieldAggregatorUnlocked, onPoolClick }: Po
     );
   };
 
-  const getCategoryColor = (category: string) => {
-    switch (category.toLowerCase()) {
-      case 'lending':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'liquid staking':
-        return 'bg-green-50 text-green-700 border-green-200';
-      case 'yield aggregator':
-        return 'bg-purple-50 text-purple-700 border-purple-200';
-      default:
-        return 'bg-slate-50 text-slate-700 border-slate-200';
+  const handleRowClick = (pool: Pool) => {
+    const isLocked = pool.category === 'Yield Aggregator' && !isYieldAggregatorUnlocked;
+    if (!isLocked) {
+      router.push(`/pool/${pool.id}`);
     }
   };
 
   return (
-    <div className="bg-white/70 backdrop-blur-sm rounded-2xl border border-slate-200/60 shadow-sm overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full">
-          <thead>
-            <tr className="bg-slate-50/80 border-b border-slate-200/60">
-              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                Pool
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                Category
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                APY
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                TVL
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                Chain
-              </th>
-              <th className="px-6 py-4 text-left text-xs font-semibold text-slate-600 uppercase tracking-wider">
-                Risk
-              </th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-200/60">
+    <Card className="overflow-hidden">
+      <div className="rounded-lg border">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead className="w-[220px] font-semibold">Project</TableHead>
+              <TableHead className="font-semibold">Category</TableHead>
+              <TableHead className="font-semibold">Symbol</TableHead>
+              <TableHead className="text-right font-semibold">TVL</TableHead>
+              <TableHead className="text-right font-semibold">APY</TableHead>
+              <TableHead className="text-right font-semibold">Prediction</TableHead>
+              <TableHead className="text-right font-semibold">Risk (σ)</TableHead>
+              <TableHead className="text-right font-semibold">Actions</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
             {pools.map((pool) => {
-              const isLocked = pool.category.toLowerCase() === 'yield aggregator' && !isYieldAggregatorUnlocked;
+              const isLocked = pool.category === 'Yield Aggregator' && !isYieldAggregatorUnlocked;
               
               return (
-                <tr 
-                  key={pool.id}
-                  onClick={() => !isLocked && onPoolClick(pool)}
-                  className={`transition-all duration-200 ${
-                    isLocked 
-                      ? 'opacity-60 cursor-not-allowed' 
-                      : 'hover:bg-slate-50/80 cursor-pointer'
+                <TableRow 
+                  key={pool.id} 
+                  className={`transition-colors ${
+                    isLocked ? 'opacity-75' : 'hover:bg-muted/50 cursor-pointer'
                   }`}
+                  onClick={() => handleRowClick(pool)}
                 >
-                  <td className="px-6 py-4">
+                  <TableCell>
                     <div className="flex items-center gap-3">
                       {getProjectIcon(pool.project)}
                       <div>
-                        <div className="font-medium text-slate-900">{pool.project}</div>
-                        <div className="text-sm text-slate-500">{pool.symbol}</div>
+                        <div className="font-semibold text-foreground">{pool.project}</div>
+                        <div className="text-sm text-muted-foreground">{pool.chain}</div>
                       </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <Badge className={`${getCategoryColor(pool.category)} text-xs font-medium px-2 py-1 rounded-full border`}>
+                  </TableCell>
+                  
+                  <TableCell>
+                    <Badge variant="secondary" className={`${getCategoryColor(pool.category)} border`}>
                       {pool.category}
                     </Badge>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="space-y-1">
-                      <div className="text-lg font-semibold text-slate-900">
-                        {formatAPY(pool.apy)}
-                      </div>
-                      <div className="text-sm text-slate-500">
-                        {formatAPY(pool.apyMean30d)} 30d avg
-                      </div>
+                  </TableCell>
+                  
+                  <TableCell className="font-medium text-foreground">
+                    {pool.symbol}
+                  </TableCell>
+                  
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <DollarSign className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-semibold text-foreground">
+                        ${(pool.tvlUsd / 1e6).toFixed(1)}M
+                      </span>
                     </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="font-medium text-slate-900">
-                      {formatTVL(pool.tvlUsd)}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-sm text-slate-700">{pool.chain}</div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="space-y-1">
-                      {pool.prediction && (
-                        <div className="text-sm">
-                          <span className="text-slate-500">Pred: </span>
-                          <span className="font-medium text-slate-700">{pool.prediction}%</span>
-                        </div>
-                      )}
-                      {pool.sigma && (
-                        <div className="text-sm">
-                          <span className="text-slate-500">Risk: </span>
-                          <span className="font-medium text-slate-700">{pool.sigma.toFixed(3)}</span>
-                        </div>
+                  </TableCell>
+                  
+                  <TableCell className="text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <Activity className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-semibold text-foreground">
+                        {pool.apy ? pool.apy.toFixed(2) : '0.00'}%
+                      </span>
+                      {pool.apy && pool.apy > 0 && (
+                        <TrendingUp className="h-4 w-4 text-green-600" />
                       )}
                     </div>
-                  </td>
-                </tr>
+                  </TableCell>
+                  
+                  <TableCell className="text-right">
+                    <span className="font-semibold text-foreground">
+                      {pool.prediction ? `${pool.prediction}%` : 'N/A'}
+                    </span>
+                  </TableCell>
+                  
+                  <TableCell className="text-right">
+                    <span className="font-semibold text-foreground">
+                      {pool.sigma ? pool.sigma.toFixed(4) : 'N/A'}
+                    </span>
+                  </TableCell>
+                  
+                  <TableCell className="text-right">
+                    {isLocked ? (
+                      <div className="flex items-center gap-1 text-muted-foreground">
+                        <Lock className="h-4 w-4" />
+                        <span className="text-sm">Locked</span>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          router.push(`/pool/${pool.id}`);
+                        }}
+                        className="h-8 w-8 p-0 hover:bg-primary hover:text-primary-foreground"
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </TableCell>
+                </TableRow>
               );
             })}
-          </tbody>
-        </table>
+          </TableBody>
+        </Table>
       </div>
-    </div>
+    </Card>
   );
 }

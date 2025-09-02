@@ -1,22 +1,46 @@
 'use client';
 
-import React from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Pool } from '@/types';
-import { formatTVL, formatAPY } from '@/lib/api';
-import { TrendingUp, Lock } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
+import { Lock, TrendingUp, DollarSign, Activity, Shield, Target } from 'lucide-react';
 
 interface PoolCardProps {
   pool: Pool;
-  isLocked?: boolean;
-  onClick?: () => void;
 }
 
-export function PoolCard({ pool, isLocked, onClick }: PoolCardProps) {
+export function PoolCard({ pool }: PoolCardProps) {
+  const router = useRouter();
+  const { isYieldAggregatorUnlocked } = useAuth();
+  
+  const isLocked = pool.category === 'Yield Aggregator' && !isYieldAggregatorUnlocked;
+  
+  const handleClick = () => {
+    if (!isLocked) {
+      router.push(`/pool/${pool.id}`);
+    }
+  };
+
+  const getCategoryColor = (category: string) => {
+    switch (category) {
+      case 'Lending':
+        return 'bg-primary/10 text-primary border-primary/20';
+      case 'Liquid Staking':
+        return 'bg-green-500/10 text-green-600 border-green-500/20';
+      case 'Yield Aggregator':
+        return 'bg-purple-500/10 text-purple-600 border-purple-500/20';
+      default:
+        return 'bg-muted text-muted-foreground border-border';
+    }
+  };
+
   const getProjectIcon = (project: string) => {
     const initials = project.split('-').map(word => word[0]).join('').toUpperCase();
     const colors = [
-      'bg-gradient-to-br from-blue-500 to-blue-600',
+      'bg-gradient-to-br from-primary to-primary/80',
       'bg-gradient-to-br from-green-500 to-green-600',
       'bg-gradient-to-br from-purple-500 to-purple-600',
       'bg-gradient-to-br from-orange-500 to-orange-600',
@@ -32,100 +56,103 @@ export function PoolCard({ pool, isLocked, onClick }: PoolCardProps) {
     );
   };
 
-  const getCategoryColor = (category: string) => {
-    switch (category.toLowerCase()) {
-      case 'lending':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
-      case 'liquid staking':
-        return 'bg-green-50 text-green-700 border-green-200';
-      case 'yield aggregator':
-        return 'bg-purple-50 text-purple-700 border-purple-200';
-      default:
-        return 'bg-slate-50 text-slate-700 border-slate-200';
-    }
-  };
-
   return (
-    <div 
-      onClick={onClick}
-      className={`group cursor-pointer transition-all duration-300 ${
-        isLocked ? 'opacity-60' : 'hover:scale-[1.02]'
-      }`}
+    <Card 
+      className={`group relative overflow-hidden transition-all duration-300 hover:shadow-xl ${
+        isLocked ? 'opacity-75' : 'hover:scale-[1.02] cursor-pointer hover:shadow-lg'
+      }`} 
+      onClick={handleClick}
     >
-      <div className={`relative bg-white/80 backdrop-blur-sm rounded-2xl border border-slate-200/60 p-6 shadow-sm hover:shadow-xl transition-all duration-300 ${
-        isLocked ? 'ring-2 ring-orange-200/50' : 'hover:border-slate-300/60'
-      }`}>
-        {/* Locked Overlay */}
-        {isLocked && (
-          <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-2xl flex items-center justify-center z-10">
-            <div className="text-center">
-              <Lock className="h-8 w-8 text-orange-500 mx-auto mb-2" />
-              <p className="text-orange-600 font-medium text-sm">Connect Wallet to Unlock</p>
-            </div>
+      {isLocked && (
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-10">
+          <div className="bg-card border rounded-lg p-4 text-center shadow-lg">
+            <Lock className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm font-medium text-muted-foreground">Connect Wallet to Unlock</p>
           </div>
-        )}
-
-        {/* Header */}
-        <div className="flex items-start justify-between mb-6">
+        </div>
+      )}
+      
+      <CardHeader className="pb-4">
+        <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
             {getProjectIcon(pool.project)}
             <div>
-              <h3 className="font-semibold text-slate-900 text-lg">{pool.project}</h3>
-              <p className="text-slate-500 text-sm">{pool.symbol}</p>
+              <CardTitle className="text-lg text-card-foreground mb-1">{pool.project}</CardTitle>
+              <p className="text-sm text-muted-foreground">{pool.symbol}</p>
             </div>
           </div>
-          <Badge className={`${getCategoryColor(pool.category)} text-xs font-medium px-3 py-1 rounded-full border`}>
+          <Badge variant="secondary" className={`${getCategoryColor(pool.category)} border`}>
             {pool.category}
           </Badge>
         </div>
-
-        {/* APY Section */}
-        <div className="space-y-4 mb-6">
-          <div className="bg-gradient-to-r from-slate-50 to-blue-50 rounded-xl p-4 border border-slate-200/40">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-slate-600 text-sm font-medium">Current APY</span>
-              <TrendingUp className="h-4 w-4 text-green-500" />
+      </CardHeader>
+      
+      <CardContent className="space-y-6">
+        {/* Main Metrics */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <DollarSign className="h-4 w-4" />
+              TVL
             </div>
-            <div className="text-2xl font-bold text-slate-900">
-              {formatAPY(pool.apy)}
+            <p className="text-xl font-bold text-card-foreground">
+              ${(pool.tvlUsd / 1e6).toFixed(1)}M
+            </p>
+          </div>
+          
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Activity className="h-4 w-4" />
+              APY
             </div>
-            <div className="text-slate-500 text-sm">
-              30d avg: {formatAPY(pool.apyMean30d)}
+            <div className="flex items-center gap-2">
+              <span className="text-xl font-bold text-card-foreground">
+                {pool.apy ? pool.apy.toFixed(2) : '0.00'}%
+              </span>
+              {pool.apy && pool.apy > 0 && (
+                <TrendingUp className="h-4 w-4 text-green-600" />
+              )}
             </div>
           </div>
         </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="text-center p-3 bg-slate-50 rounded-lg">
-            <div className="text-slate-500 text-xs font-medium mb-1">TVL</div>
-            <div className="text-slate-900 font-semibold">{formatTVL(pool.tvlUsd)}</div>
+        
+        {/* Secondary Metrics */}
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Target className="h-4 w-4" />
+              Prediction
+            </div>
+            <p className="font-semibold text-card-foreground">
+              {pool.prediction ? `${pool.prediction}%` : 'N/A'}
+            </p>
           </div>
-          <div className="text-center p-3 bg-slate-50 rounded-lg">
-            <div className="text-slate-500 text-xs font-medium mb-1">Chain</div>
-            <div className="text-slate-900 font-semibold text-sm">{pool.chain}</div>
+          
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Shield className="h-4 w-4" />
+              Risk (σ)
+            </div>
+            <p className="font-semibold text-card-foreground">
+              {pool.sigma ? pool.sigma.toFixed(4) : 'N/A'}
+            </p>
           </div>
         </div>
-
-        {/* Additional Info */}
-        <div className="space-y-3">
-          {pool.prediction && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-500">Prediction Score</span>
-              <span className="font-medium text-slate-700">{pool.prediction}%</span>
-            </div>
-          )}
-          {pool.sigma && (
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-slate-500">Risk Score</span>
-              <span className="font-medium text-slate-700">{pool.sigma.toFixed(3)}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Hover Effect */}
-        <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-500/5 to-indigo-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-      </div>
-    </div>
+        
+        {/* Action Button */}
+        {!isLocked && (
+          <Button 
+            variant="outline" 
+            className="w-full mt-4 group-hover:bg-primary group-hover:text-primary-foreground transition-colors"
+            onClick={(e) => {
+              e.stopPropagation();
+              router.push(`/pool/${pool.id}`);
+            }}
+          >
+            View Details
+          </Button>
+        )}
+      </CardContent>
+    </Card>
   );
 }

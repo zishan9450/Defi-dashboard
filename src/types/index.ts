@@ -25,6 +25,7 @@ export interface HistoricalAPY {
   apyReward?: number | null;
   il7d?: number | null;
   apyBase7d?: number | null;
+  month?: string; // Formatted month label for charts
 }
 
 export interface PoolChartData {

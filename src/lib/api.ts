@@ -310,11 +310,18 @@ export function getMonthlyAPYData(historicalData: HistoricalAPY[]): HistoricalAP
     
     if (closest && closest.timestamp) {
       // Convert string timestamp to number for consistency
-      const processedData: HistoricalAPY = {
+      const timestamp = typeof closest.timestamp === 'string' 
+        ? Math.floor(new Date(closest.timestamp).getTime() / 1000)
+        : closest.timestamp;
+      
+      // Format the month label
+      const date = new Date(timestamp * 1000);
+      const month = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
+      
+      const processedData: HistoricalAPY & { month: string } = {
         ...closest,
-        timestamp: typeof closest.timestamp === 'string' 
-          ? Math.floor(new Date(closest.timestamp).getTime() / 1000)
-          : closest.timestamp
+        timestamp,
+        month
       };
       monthlyData.push(processedData);
     }
@@ -344,4 +351,20 @@ export function formatTVL(tvl: number): string {
  */
 export function formatAPY(apy: number): string {
   return `${apy.toFixed(2)}%`;
+}
+
+export async function getPoolById(poolId: string): Promise<Pool> {
+  try {
+    const allPools = await getPoolsWithFallback();
+    const foundPool = allPools.find(p => p.id === poolId);
+    
+    if (!foundPool) {
+      throw new Error('Pool not found');
+    }
+    
+    return foundPool;
+  } catch (error) {
+    console.error('Error getting pool by ID:', error);
+    throw error;
+  }
 }
