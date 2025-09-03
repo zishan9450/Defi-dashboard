@@ -1,15 +1,17 @@
 'use client';
 
-import { use, useEffect, useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useState, useEffect, use } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Sidebar } from '@/components/Sidebar';
-import { APYChart } from '@/components/APYChart';
-import { Pool } from '@/types';
-import { getPoolById } from '@/lib/api';
-import { ArrowLeft, TrendingUp, DollarSign, Activity, Shield, Target, Menu } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { getCategoryColor } from '@/lib/utils';
+import { formatPrediction } from '@/lib/api';
+import { Activity, DollarSign, Shield, Target, TrendingUp, Menu, ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { APYChart } from '@/components/APYChart';
+import { Sidebar } from '@/components/Sidebar';
+import { Pool, PoolCategory } from '@/types';
+import { getPoolsWithFallback } from '@/lib/api';
 
 interface PoolDetailPageProps {
   params: Promise<{ id: string }>;
@@ -19,55 +21,41 @@ export default function PoolDetailPage({ params }: PoolDetailPageProps) {
   const { id } = use(params);
   const router = useRouter();
   const [pool, setPool] = useState<Pool | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(true);
-  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   useEffect(() => {
-    const fetchPoolData = async () => {
+    const fetchPool = async () => {
       try {
-        setLoading(true);
-        const poolData = await getPoolById(id);
-        setPool(poolData);
-        setError(null);
+        setIsLoading(true);
+        const pools = await getPoolsWithFallback();
+        const foundPool = pools.find(p => p.id === id);
+        
+        if (foundPool) {
+          setPool(foundPool);
+        } else {
+          setError('Pool not found');
+        }
       } catch (err) {
+        setError('Failed to fetch pool data');
         console.error('Error fetching pool:', err);
-        setError('Failed to fetch pool data. Please try again later.');
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
-    fetchPoolData();
+    fetchPool();
   }, [id]);
 
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case 'Lending':
-        return 'bg-primary/10 text-primary border-primary/20';
-      case 'Liquid Staking':
-        return 'bg-green-500/10 text-green-600 border-green-500/20';
-      case 'Yield Aggregator':
-        return 'bg-purple-500/10 text-purple-600 border-purple-500/20';
-      default:
-        return 'bg-muted text-muted-foreground border-border';
-    }
-  };
-
-  if (loading) {
+  if (isLoading) {
     return (
-      <div className="flex h-screen bg-background">
-        <Sidebar 
-          isCollapsed={sidebarCollapsed} 
-          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-          isMobileOpen={mobileSidebarOpen}
-          onMobileClose={() => setMobileSidebarOpen(false)}
-        />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-auto p-6">
-            <div className="max-w-4xl mx-auto">
-              <div className="text-center py-20">
+      <div className="min-h-screen bg-background">
+        <Sidebar isMobileOpen={isMobileOpen} onMobileClose={() => setIsMobileOpen(false)} />
+        <div className="lg:ml-64">
+          <div className="container mx-auto p-6">
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
                 <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
                 <p className="text-muted-foreground">Loading pool details...</p>
               </div>
@@ -80,18 +68,16 @@ export default function PoolDetailPage({ params }: PoolDetailPageProps) {
 
   if (error || !pool) {
     return (
-      <div className="flex h-screen bg-background">
-        <Sidebar 
-          isCollapsed={sidebarCollapsed} 
-          onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-          isMobileOpen={mobileSidebarOpen}
-          onMobileClose={() => setMobileSidebarOpen(false)}
-        />
-        <div className="flex-1 flex flex-col overflow-hidden">
-          <div className="flex-1 overflow-auto p-6">
-            <div className="max-w-4xl mx-auto">
-              <div className="text-center py-20">
-                <div className="text-destructive text-lg mb-4">⚠️ Error</div>
+      <div className="min-h-screen bg-background">
+        <Sidebar isMobileOpen={isMobileOpen} onMobileClose={() => setIsMobileOpen(false)} />
+        <div className="lg:ml-64">
+          <div className="container mx-auto p-6">
+            <div className="flex items-center justify-center h-64">
+              <div className="text-center">
+                <div className="text-red-500 mb-4">
+                  <Shield className="h-12 w-12 mx-auto" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Error Loading Pool</h3>
                 <p className="text-muted-foreground mb-4">{error || 'Pool not found'}</p>
                 <Button onClick={() => router.back()}>Go Back</Button>
               </div>
@@ -103,32 +89,20 @@ export default function PoolDetailPage({ params }: PoolDetailPageProps) {
   }
 
   return (
-    <div className="flex h-screen bg-background">
-      {/* Sidebar */}
-      <Sidebar 
-        isCollapsed={sidebarCollapsed} 
-        onToggle={() => setSidebarCollapsed(!sidebarCollapsed)}
-        isMobileOpen={mobileSidebarOpen}
-        onMobileClose={() => setMobileSidebarOpen(false)}
-      />
-
+    <div className="min-h-screen bg-background">
+      <Sidebar isMobileOpen={isMobileOpen} onMobileClose={() => setIsMobileOpen(false)} />
+      
       {/* Main Content */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="lg:ml-64">
         {/* Header */}
-        <header className="border-b bg-card/50 backdrop-blur-sm sticky top-0 z-50 shadow-sm">
-          <div className="flex items-center justify-between px-6 py-4">
+        <header className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+          <div className="container mx-auto px-6 py-4">
             <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => {
-                  if (window.innerWidth < 1024) {
-                    setMobileSidebarOpen(true);
-                  } else {
-                    setSidebarCollapsed(!sidebarCollapsed);
-                  }
-                }}
-                className="block"
+                onClick={() => setIsMobileOpen(true)}
+                className="lg:hidden"
               >
                 <Menu className="h-5 w-5" />
               </Button>
@@ -136,17 +110,21 @@ export default function PoolDetailPage({ params }: PoolDetailPageProps) {
                 variant="ghost"
                 size="sm"
                 onClick={() => router.back()}
-                className="gap-2"
+                className="hidden lg:flex"
               >
-                <ArrowLeft className="h-4 w-4" />
-                Back to Dashboard
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                Back
               </Button>
+              <div>
+                <h1 className="text-2xl font-bold text-foreground">Pool Details</h1>
+                <p className="text-sm text-muted-foreground">Detailed information about {pool.project}</p>
+              </div>
             </div>
           </div>
         </header>
 
-        {/* Pool Detail Content */}
-        <div className="flex-1 overflow-auto p-6">
+        {/* Pool Content */}
+        <div className="container mx-auto p-6">
           <div className="max-w-4xl mx-auto space-y-8">
             {/* Pool Header */}
             <div className="space-y-4">
@@ -155,7 +133,7 @@ export default function PoolDetailPage({ params }: PoolDetailPageProps) {
                   <h1 className="text-3xl font-bold text-card-foreground mb-2">{pool.project}</h1>
                   <p className="text-lg text-muted-foreground">{pool.symbol}</p>
                 </div>
-                <Badge variant="secondary" className={`${getCategoryColor(pool.category)} border`}>
+                <Badge variant="secondary" className={`${getCategoryColor(pool.category as PoolCategory)} border`}>
                   {pool.category}
                 </Badge>
               </div>
@@ -191,8 +169,8 @@ export default function PoolDetailPage({ params }: PoolDetailPageProps) {
                     <Target className="h-4 w-4" />
                     Prediction
                   </div>
-                  <p className="text-2xl font-bold text-card-foreground">
-                    {pool.prediction ? `${pool.prediction}%` : 'N/A'}
+                  <p className="text-2xl font-bold text-card-foreground truncate">
+                    {formatPrediction(pool.prediction)}
                   </p>
                 </div>
                 
@@ -213,7 +191,7 @@ export default function PoolDetailPage({ params }: PoolDetailPageProps) {
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <TrendingUp className="h-5 w-5 text-primary" />
-                  Historical APY (Last 12 Months)
+                  Historical APY (Last 20 Months)
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -238,7 +216,7 @@ export default function PoolDetailPage({ params }: PoolDetailPageProps) {
                             <Badge variant="outline" className="text-xs">Underlying</Badge>
                           </div>
                           <div className="break-all">
-                            <span className="text-xs font-mono text-muted-foreground">
+                            <span className="text-xs font-monospace text-muted-foreground">
                               {token === '0x0000000000000000000000000000000000000000' ? 'ETH (Native Token)' : token}
                             </span>
                           </div>
@@ -263,10 +241,10 @@ export default function PoolDetailPage({ params }: PoolDetailPageProps) {
                         <div key={index} className="flex flex-col space-y-2 p-3 bg-muted rounded-lg">
                           <div className="flex items-center justify-between">
                             <span className="text-sm font-medium text-foreground">Reward {index + 1}</span>
-                            <Badge variant="secondary" className="text-xs">Reward</Badge>
+                            <Badge variant="outline" className="text-xs">Reward</Badge>
                           </div>
                           <div className="break-all">
-                            <span className="text-xs font-mono text-muted-foreground">
+                            <span className="text-xs font-monospace text-muted-foreground">
                               {token === '0x0000000000000000000000000000000000000000' ? 'ETH (Native Token)' : token}
                             </span>
                           </div>
@@ -280,7 +258,19 @@ export default function PoolDetailPage({ params }: PoolDetailPageProps) {
               </Card>
             </div>
 
-            {/* Additional Info */}
+            {/* Pool Meta */}
+            {pool.poolMeta && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Pool Metadata</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">{pool.poolMeta}</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Additional Information */}
             <Card>
               <CardHeader>
                 <CardTitle>Additional Information</CardTitle>

@@ -24,29 +24,29 @@ interface APIPool {
 const POOLS_API = 'https://yields.llama.fi/pools';
 const CHART_API = 'https://yields.llama.fi/chart';
 
-// Target projects for each category
+// Target projects for each category with specific pool IDs
 export const TARGET_PROJECTS = {
   Lending: [
-    'aave-v3',
-    'compound-v3', 
-    'maple',
+    { name: 'aave-v3', poolId: 'db678df9-3281-4bc2-a8bb-01160ffd6d48' },
+    { name: 'compound-v3', poolId: 'c1ca08e4-d618-415e-ad63-fcec58705469' },
+    { name: 'maple', poolId: '8edfdf02-cdbb-43f7-bca6-954e5fe56813' },
   ],
   'Liquid Staking': [
-    'lido',
-    'binance-staked-eth',
-    'stader',
+    { name: 'lido', poolId: '747c1d2a-c668-4682-b9f9-296708a3dd90' },
+    { name: 'binance-staked-eth', poolId: '80b8bf92-b953-4c20-98ea-c9653ef2bb98' },
+    { name: 'stader', poolId: '90bfb3c2-5d35-4959-a275-ba5085b08aa3' },
   ],
   'Yield Aggregator': [
-    'cian-yield-layer',
-    'yearn-finance',
-    'beefy',
+    { name: 'cian-yield-layer', poolId: '107fb915-ab29-475b-b526-d0ed0d3e6110' },
+    { name: 'yearn-finance', poolId: '05a3d186-2d42-4e21-b1f0-68c079d22677' },
+    { name: 'beefy', poolId: '1977885c-d5ae-4c9e-b4df-863b7e1578e6' },
   ],
 };
 
 // Fallback sample data in case API is down
 export const SAMPLE_POOLS: Pool[] = [
   {
-    id: 'sample-aave',
+    id: 'db678df9-3281-4bc2-a8bb-01160ffd6d48', // aave-v3
     project: 'aave-v3',
     chain: 'Ethereum',
     category: 'Lending',
@@ -62,7 +62,7 @@ export const SAMPLE_POOLS: Pool[] = [
     url: 'https://aave.com'
   },
   {
-    id: 'sample-compound',
+    id: 'c1ca08e4-d618-415e-ad63-fcec58705469', // compound-v3
     project: 'compound-v3',
     chain: 'Ethereum',
     category: 'Lending',
@@ -78,7 +78,23 @@ export const SAMPLE_POOLS: Pool[] = [
     url: 'https://compound.finance'
   },
   {
-    id: 'sample-lido',
+    id: '8edfdf02-cdbb-43f7-bca6-954e5fe56813', // maple
+    project: 'maple',
+    chain: 'Ethereum',
+    category: 'Lending',
+    symbol: 'mUSDC',
+    tvlUsd: 750000000,
+    apy: 6.50,
+    apyMean30d: 6.45,
+    prediction: 6.55,
+    sigma: 0.65,
+    poolMeta: 'USDC Lending Pool',
+    underlyingTokens: ['USDC'],
+    rewardTokens: ['MPL'],
+    url: 'https://maple.finance'
+  },
+  {
+    id: '747c1d2a-c668-4682-b9f9-296708a3dd90', // lido
     project: 'lido',
     chain: 'Ethereum',
     category: 'Liquid Staking',
@@ -94,20 +110,84 @@ export const SAMPLE_POOLS: Pool[] = [
     url: 'https://lido.fi'
   },
   {
-    id: 'sample-yearn',
+    id: '80b8bf92-b953-4c20-98ea-c9653ef2bb98', // binance-staked-eth
+    project: 'binance-staked-eth',
+    chain: 'Ethereum',
+    category: 'Liquid Staking',
+    symbol: 'BETH',
+    tvlUsd: 8500000000,
+    apy: 4.85,
+    apyMean30d: 4.82,
+    prediction: 4.88,
+    sigma: 0.78,
+    poolMeta: 'Liquid Staking Pool',
+    underlyingTokens: ['ETH'],
+    rewardTokens: ['BNB'],
+    url: 'https://binance.com'
+  },
+  {
+    id: '90bfb3c2-5d35-4959-a275-ba5085b08aa3', // stader
+    project: 'stader',
+    chain: 'Ethereum',
+    category: 'Liquid Staking',
+    symbol: 'ETHx',
+    tvlUsd: 3200000000,
+    apy: 4.95,
+    apyMean30d: 4.91,
+    prediction: 4.98,
+    sigma: 0.85,
+    poolMeta: 'Liquid Staking Pool',
+    underlyingTokens: ['ETH'],
+    rewardTokens: ['SD'],
+    url: 'https://staderlabs.com'
+  },
+  {
+    id: '107fb915-ab29-475b-b526-d0ed0d3e6110', // cian-yield-layer
+    project: 'cian-yield-layer',
+    chain: 'Ethereum',
+    category: 'Yield Aggregator',
+    symbol: 'CYL',
+    tvlUsd: 450000000,
+    apy: 8.75,
+    apyMean30d: 8.68,
+    prediction: 8.82,
+    sigma: 1.25,
+    poolMeta: 'Yield Aggregator Pool',
+    underlyingTokens: ['USDC', 'ETH'],
+    rewardTokens: ['CYL'],
+    url: 'https://cian.finance'
+  },
+  {
+    id: '05a3d186-2d42-4e21-b1f0-68c079d22677', // yearn-finance
     project: 'yearn-finance',
     chain: 'Ethereum',
     category: 'Yield Aggregator',
     symbol: 'yUSDC',
-    tvlUsd: 450000000,
-    apy: 6.78,
-    apyMean30d: 6.65,
-    prediction: 6.85,
+    tvlUsd: 680000000,
+    apy: 7.25,
+    apyMean30d: 7.18,
+    prediction: 7.32,
     sigma: 1.15,
-    poolMeta: 'USDC Yield Strategy',
+    poolMeta: 'Yield Aggregator Pool',
     underlyingTokens: ['USDC'],
     rewardTokens: ['YFI'],
     url: 'https://yearn.finance'
+  },
+  {
+    id: '1977885c-d5ae-4c9e-b4df-863b7e1578e6', // beefy
+    project: 'beefy',
+    chain: 'Ethereum',
+    category: 'Yield Aggregator',
+    symbol: 'BIFI',
+    tvlUsd: 320000000,
+    apy: 9.50,
+    apyMean30d: 9.42,
+    prediction: 9.58,
+    sigma: 1.45,
+    poolMeta: 'Yield Aggregator Pool',
+    underlyingTokens: ['USDC', 'ETH', 'WBTC'],
+    rewardTokens: ['BIFI'],
+    url: 'https://beefy.finance'
   }
 ];
 
@@ -147,22 +227,26 @@ export async function fetchTargetPools(): Promise<Pool[]> {
     const allPools = await fetchAllPools();
     console.log('All pools fetched:', allPools.length);
     
-    // Find pools by project name and category
+    // Find pools by specific pool ID first, then fallback to project name
     const targetPools: Pool[] = [];
     
     Object.entries(TARGET_PROJECTS).forEach(([category, projects]) => {
-      projects.forEach(projectName => {
-        // Find pools that match the project name (case-insensitive)
-        const matchingPools = allPools.filter((pool: APIPool) => 
-          pool.project.toLowerCase().includes(projectName.toLowerCase()) ||
-          projectName.toLowerCase().includes(pool.project.toLowerCase())
-        );
+      projects.forEach(project => {
+        // First try to find by exact pool ID
+        let pool = allPools.find((p: APIPool) => p.pool === project.poolId);
         
-        if (matchingPools.length > 0) {
-          // Take the first matching pool and ensure it has the correct category
-          const pool = matchingPools[0];
+        // If not found by ID, try to find by project name
+        if (!pool) {
+          const matchingPools = allPools.filter((p: APIPool) => 
+            p.project.toLowerCase().includes(project.name.toLowerCase()) ||
+            project.name.toLowerCase().includes(p.project.toLowerCase())
+          );
+          pool = matchingPools[0];
+        }
+        
+        if (pool) {
           const poolWithCategory: Pool = {
-            id: pool.pool, // Map 'pool' field to 'id'
+            id: project.poolId, // Use the specific pool ID from our config
             project: pool.project,
             chain: pool.chain,
             category: category,
@@ -178,10 +262,10 @@ export async function fetchTargetPools(): Promise<Pool[]> {
             url: undefined
           };
           targetPools.push(poolWithCategory);
-          console.log(`Found pool for ${projectName}:`, pool.project, 'Category:', category);
+          console.log(`Found pool for ${project.name}:`, pool.project, 'Category:', category, 'Pool ID:', project.poolId);
           console.log('Pool data:', poolWithCategory);
         } else {
-          console.log(`No pool found for project: ${projectName}`);
+          console.log(`No pool found for project: ${project.name} with ID: ${project.poolId}`);
         }
       });
     });
@@ -193,6 +277,26 @@ export async function fetchTargetPools(): Promise<Pool[]> {
     console.error('Error fetching target pools:', error);
     throw error;
   }
+}
+
+/**
+ * Format prediction value to prevent decimal overflow
+ */
+export function formatPrediction(prediction: number | null | undefined): string {
+  if (prediction === null || prediction === undefined) return 'N/A';
+  
+  // If prediction is a whole number, show as integer
+  if (Number.isInteger(prediction)) {
+    return `${prediction}%`;
+  }
+  
+  // If prediction has many decimal places, limit to 2
+  const formatted = prediction.toFixed(2);
+  
+  // Remove trailing zeros after decimal
+  const cleanFormatted = formatted.replace(/\.?0+$/, '');
+  
+  return `${cleanFormatted}%`;
 }
 
 /**
@@ -265,6 +369,22 @@ export async function fetchHistoricalAPY(poolId: string): Promise<HistoricalAPY[
     if (data.data && data.data.length > 0) {
       console.log(`Found ${data.data.length} historical data points`);
       console.log('Sample data point:', data.data[0]);
+      
+      // Log the date range of the data
+      const firstTimestamp = data.data[0].timestamp;
+      const lastTimestamp = data.data[data.data.length - 1].timestamp;
+      const firstDate = new Date(firstTimestamp);
+      const lastDate = new Date(lastTimestamp);
+      console.log(`Data spans from ${firstDate.toISOString()} to ${lastDate.toISOString()}`);
+      
+      // Check if we have enough data for 20 months
+      const monthsDiff = (lastDate.getFullYear() - firstDate.getFullYear()) * 12 + 
+                        (lastDate.getMonth() - firstDate.getMonth());
+      console.log(`Data covers approximately ${monthsDiff} months`);
+      
+      if (monthsDiff < 20) {
+        console.log(`ℹ️ Pool ${poolId} has ${monthsDiff} months of data. Chart will show available data points.`);
+      }
     } else {
       console.log('No historical data found');
     }
@@ -277,57 +397,115 @@ export async function fetchHistoricalAPY(poolId: string): Promise<HistoricalAPY[
 }
 
 /**
- * Get APY data for the first day of each month for the last 12 months
+ * Get APY data for the first day of each month for the last 20 months
  */
-export function getMonthlyAPYData(historicalData: HistoricalAPY[]): HistoricalAPY[] {
+export function getMonthlyAPYData(historicalData: HistoricalAPY[]): (HistoricalAPY & { month: string })[] {
   // If no historical data, return empty array
   if (!historicalData || historicalData.length === 0) {
     console.log('No historical data provided to getMonthlyAPYData');
     return [];
   }
 
-  const monthlyData: HistoricalAPY[] = [];
+  console.log('Processing historical data:', historicalData.length, 'points');
+  console.log('Sample data point:', historicalData[0]);
+
+  // Sort data by timestamp (oldest first)
+  const sortedData = [...historicalData].filter(item => item.timestamp != null).sort((a, b) => {
+    const timestampA = typeof a.timestamp === 'string' 
+      ? new Date(a.timestamp).getTime() 
+      : (a.timestamp as number) * 1000;
+    const timestampB = typeof b.timestamp === 'string' 
+      ? new Date(b.timestamp).getTime() 
+      : (b.timestamp as number) * 1000;
+    return timestampA - timestampB;
+  });
+
+  // Get the date range
+  const firstDate = new Date(typeof sortedData[0].timestamp === 'string' 
+    ? sortedData[0].timestamp 
+    : (sortedData[0].timestamp as number) * 1000);
+  const lastDate = new Date(typeof sortedData[sortedData.length - 1].timestamp === 'string' 
+    ? sortedData[sortedData.length - 1].timestamp 
+    : (sortedData[sortedData.length - 1].timestamp as number) * 1000);
+
+  console.log('Data range:', firstDate.toISOString(), 'to', lastDate.toISOString());
+
+  // Create monthly buckets
+  const monthlyBuckets: { [key: string]: HistoricalAPY[] } = {};
+  
+  sortedData.forEach(item => {
+    if (!item.timestamp) return; // Skip items without timestamp
+    
+    const timestamp = typeof item.timestamp === 'string' 
+      ? new Date(item.timestamp).getTime() 
+      : (item.timestamp as number) * 1000;
+    const date = new Date(timestamp);
+    const monthKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+    
+    if (!monthlyBuckets[monthKey]) {
+      monthlyBuckets[monthKey] = [];
+    }
+    monthlyBuckets[monthKey].push(item);
+  });
+
+  console.log('Monthly buckets:', Object.keys(monthlyBuckets));
+
+  // Generate up to 20 months of data, starting from the most recent month
+  const monthlyData: (HistoricalAPY & { month: string })[] = [];
   const now = new Date();
   
-  // Get the last 12 months
-  for (let i = 11; i >= 0; i--) {
+  // Generate up to 20 months of data points
+  for (let i = 19; i >= 0; i--) {
     const targetDate = new Date(now.getFullYear(), now.getMonth() - i, 1);
-    const targetTimestamp = Math.floor(targetDate.getTime() / 1000);
+    const monthKey = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, '0')}`;
+    const month = targetDate.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
     
-    // Find the closest data point to the first day of the month
-    const closest = historicalData.reduce((prev, curr) => {
-      // Convert timestamp to number if it's a string
-      const currTimestamp = typeof curr.timestamp === 'string' 
-        ? Math.floor(new Date(curr.timestamp).getTime() / 1000)
-        : curr.timestamp;
-      
-      const prevTimestamp = typeof prev.timestamp === 'string'
-        ? Math.floor(new Date(prev.timestamp).getTime() / 1000)
-        : prev.timestamp;
-      
-      return Math.abs(currTimestamp - targetTimestamp) < Math.abs(prevTimestamp - targetTimestamp) ? curr : prev;
-    });
+    // Try to find data for this month
+    let monthData: HistoricalAPY | null = null;
     
-    if (closest && closest.timestamp) {
-      // Convert string timestamp to number for consistency
-      const timestamp = typeof closest.timestamp === 'string' 
-        ? Math.floor(new Date(closest.timestamp).getTime() / 1000)
-        : closest.timestamp;
+    if (monthlyBuckets[monthKey] && monthlyBuckets[monthKey].length > 0) {
+      // Use the first data point of the month
+      monthData = monthlyBuckets[monthKey].sort((a, b) => {
+        const timestampA = typeof a.timestamp === 'string' 
+          ? new Date(a.timestamp).getTime() 
+          : (a.timestamp as number) * 1000;
+        const timestampB = typeof b.timestamp === 'string' 
+          ? new Date(b.timestamp).getTime() 
+          : (b.timestamp as number) * 1000;
+        return timestampA - timestampB;
+      })[0];
+    } else {
+      // If no data for this month, find the closest data point
+      const targetTimestamp = targetDate.getTime();
+      const closest = sortedData.reduce((prev, curr) => {
+        const currTimestamp = typeof curr.timestamp === 'string' 
+          ? new Date(curr.timestamp).getTime() 
+          : (curr.timestamp as number) * 1000;
+        const prevTimestamp = typeof prev.timestamp === 'string' 
+          ? new Date(prev.timestamp).getTime() 
+          : (prev.timestamp as number) * 1000;
+        
+        return Math.abs(currTimestamp - targetTimestamp) < Math.abs(prevTimestamp - targetTimestamp) ? curr : prev;
+      });
       
-      // Format the month label
-      const date = new Date(timestamp * 1000);
-      const month = date.toLocaleDateString('en-US', { month: 'short', year: '2-digit' });
-      
+      monthData = closest;
+    }
+    
+    if (monthData) {
       const processedData: HistoricalAPY & { month: string } = {
-        ...closest,
-        timestamp,
+        ...monthData,
+        timestamp: typeof monthData.timestamp === 'string' 
+          ? Math.floor(new Date(monthData.timestamp).getTime() / 1000)
+          : (monthData.timestamp as number),
         month
       };
       monthlyData.push(processedData);
     }
   }
+
+  console.log('Final processed monthly data:', monthlyData.length, 'points');
+  console.log('Sample processed data:', monthlyData[0]);
   
-  console.log('Processed monthly data:', monthlyData);
   return monthlyData;
 }
 

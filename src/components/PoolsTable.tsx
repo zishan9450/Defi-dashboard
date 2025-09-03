@@ -8,6 +8,7 @@ import { Pool } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Lock, TrendingUp, DollarSign, Activity, ExternalLink } from 'lucide-react';
+import { formatPrediction } from '@/lib/api';
 
 interface PoolsTableProps {
   pools: Pool[];
@@ -126,8 +127,8 @@ export function PoolsTable({ pools }: PoolsTableProps) {
                   </TableCell>
                   
                   <TableCell className="text-right">
-                    <span className="font-semibold text-foreground">
-                      {pool.prediction ? `${pool.prediction}%` : 'N/A'}
+                    <span className="font-semibold text-foreground max-w-[80px] block truncate">
+                      {formatPrediction(pool.prediction)}
                     </span>
                   </TableCell>
                   

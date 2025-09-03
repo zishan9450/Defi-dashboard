@@ -7,6 +7,7 @@ import { Pool } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Lock, TrendingUp, DollarSign, Activity, Shield, Target } from 'lucide-react';
+import { formatPrediction } from '@/lib/api';
 
 interface PoolCardProps {
   pool: Pool;
@@ -123,8 +124,8 @@ export function PoolCard({ pool }: PoolCardProps) {
               <Target className="h-4 w-4" />
               Prediction
             </div>
-            <p className="font-semibold text-card-foreground">
-              {pool.prediction ? `${pool.prediction}%` : 'N/A'}
+            <p className="font-semibold text-card-foreground truncate">
+              {formatPrediction(pool.prediction)}
             </p>
           </div>
           

@@ -1,15 +1,20 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { WalletConnection, UserAuth } from '@/types';
+import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+
+interface WalletConnection {
+  isConnected: boolean;
+  address?: string;
+  chainId?: number;
+}
 
 interface AuthContextType {
   walletConnection: WalletConnection;
-  userAuth: UserAuth;
+  isMetaMaskAvailable: boolean;
+  metaMaskError: string | null;
   connectWallet: () => Promise<void>;
   disconnectWallet: () => void;
-  login: (email: string, password: string) => Promise<void>;
-  logout: () => void;
   isYieldAggregatorUnlocked: boolean;
 }
 
@@ -29,41 +34,177 @@ interface AuthProviderProps {
 
 export function AuthProvider({ children }: AuthProviderProps) {
   const [walletConnection, setWalletConnection] = useState<WalletConnection>({
-    isConnected: false,
+    isConnected: false
   });
-  
-  const [userAuth, setUserAuth] = useState<UserAuth>({
-    isLoggedIn: false,
-  });
+  const [metaMaskError, setMetaMaskError] = useState<string | null>(null);
 
   // Check if MetaMask is available
-  const isMetaMaskAvailable = typeof window !== 'undefined' && window.ethereum;
-
-  // Connect to MetaMask wallet
-  const connectWallet = async () => {
-    if (!window.ethereum) {
-      throw new Error('MetaMask is not installed. Please install MetaMask to continue.');
+  const isMetaMaskAvailable = (() => {
+    if (typeof window === 'undefined') return false;
+    
+    // Method 1: Check if ethereum object exists and has isMetaMask property
+    if ((window as { ethereum?: { isMetaMask?: boolean } }).ethereum?.isMetaMask) {
+      console.log('MetaMask detected via isMetaMask property');
+      return true;
     }
+    
+    // Method 2: Check providers array (multiple wallet scenario)
+    if ((window as { ethereum?: { providers?: unknown[] } }).ethereum?.providers) {
+      const providers = (window as { ethereum?: { providers?: unknown[] } }).ethereum!.providers!;
+      const hasMetaMask = providers.some((provider: unknown) => (provider as { isMetaMask?: boolean }).isMetaMask);
+      if (hasMetaMask) {
+        console.log('MetaMask detected via providers array');
+        return true;
+      }
+    }
+    
+    // Method 3: Check if ethereum object exists (fallback)
+    if ((window as { ethereum?: unknown }).ethereum) {
+      console.log('Ethereum object detected, but MetaMask status unclear');
+      return true;
+    }
+    
+    // Method 4: Check for injected providers
+    if ((window as { web3?: { currentProvider?: { isMetaMask?: boolean } } }).web3?.currentProvider?.isMetaMask) {
+      console.log('MetaMask detected via web3.currentProvider');
+      return true;
+    }
+    
+    console.log('No MetaMask detected');
+    return false;
+  })();
 
+  // Get the correct MetaMask provider
+  const getMetaMaskProvider = (): { 
+    request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+    on: (event: string, callback: (...args: unknown[]) => void) => void;
+    removeListener: (event: string, callback: (...args: unknown[]) => void) => void;
+  } | null => {
+    if (typeof window === 'undefined') return null;
+    
+    // Check if ethereum is directly available
+    if ((window as { ethereum?: { isMetaMask?: boolean } }).ethereum?.isMetaMask) {
+      return (window as { ethereum?: { 
+        request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+        on: (event: string, callback: (...args: unknown[]) => void) => void;
+        removeListener: (event: string, callback: (...args: unknown[]) => void) => void;
+      } }).ethereum || null;
+    }
+    
+    // Check if ethereum has providers array (multiple wallet scenario)
+    if ((window as { ethereum?: { providers?: unknown[] } }).ethereum?.providers) {
+      const providers = (window as { ethereum?: { providers?: unknown[] } }).ethereum!.providers!;
+      const metaMaskProvider = providers.find((provider: unknown) => (provider as { isMetaMask?: boolean }).isMetaMask);
+      if (metaMaskProvider) {
+        return metaMaskProvider as { 
+          request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+          on: (event: string, callback: (...args: unknown[]) => void) => void;
+          removeListener: (event: string, callback: (...args: unknown[]) => void) => void;
+        };
+      }
+    }
+    
+    // Fallback to window.ethereum
+    return (window as { ethereum?: { 
+      request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
+      on: (event: string, callback: (...args: unknown[]) => void) => void;
+      removeListener: (event: string, callback: (...args: unknown[]) => void) => void;
+    } }).ethereum || null;
+  };
+
+  // Connect to MetaMask wallet with enhanced error handling
+  const connectWallet = async () => {
     try {
-      const accounts = await window.ethereum.request({
-        method: 'eth_requestAccounts',
-      }) as string[];
+      setMetaMaskError(null);
+      
+      const provider = getMetaMaskProvider();
+      
+      if (!provider) {
+        const error = 'MetaMask is not installed. Please install MetaMask to continue.';
+        setMetaMaskError(error);
+        throw new Error(error);
+      }
+
+      // Check if already connected
+      try {
+        const accounts = await provider.request({ method: 'eth_accounts' }) as string[];
+        if (accounts && accounts.length > 0) {
+          // Already connected, just update state
+          const account = accounts[0];
+          const chainId = await provider.request({ method: 'eth_chainId' }) as string;
+          setWalletConnection({
+            isConnected: true,
+            address: account,
+            chainId: parseInt(chainId, 16)
+          });
+          return;
+        }
+      } catch {
+        console.log('No existing connection, proceeding with new connection');
+      }
+
+      // Add a small delay to ensure MetaMask is ready
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Request new connection with retry logic
+      let accounts: string[] = [];
+      let retryCount = 0;
+      const maxRetries = 3;
+      
+      while (retryCount < maxRetries) {
+        try {
+          console.log(`Attempting to connect wallet (attempt ${retryCount + 1}/${maxRetries})`);
+          accounts = await provider.request({
+            method: 'eth_requestAccounts',
+          }) as string[];
+          break;
+        } catch (error: any) {
+          retryCount++;
+          console.log(`Connection attempt ${retryCount} failed:`, error);
+          
+          if (retryCount >= maxRetries) {
+            throw error;
+          }
+          
+          // Wait before retry
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
+      }
       
       if (accounts && Array.isArray(accounts) && accounts.length > 0) {
         const account = accounts[0];
-        const chainId = await window.ethereum.request({ method: 'eth_chainId' }) as string;
+        const chainId = await provider.request({ method: 'eth_chainId' }) as string;
         setWalletConnection({
           isConnected: true,
           address: account,
           chainId: parseInt(chainId, 16)
         });
+        console.log('Wallet connected successfully:', account);
       } else {
-        throw new Error('No accounts found');
+        const error = 'No accounts found. Please unlock MetaMask and try again.';
+        setMetaMaskError(error);
+        throw new Error(error);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error connecting wallet:', error);
-      throw error;
+      
+      // Handle specific MetaMask errors
+      let errorMessage = 'Failed to connect wallet. Please try again.';
+      
+      if (error.code === 4001) {
+        errorMessage = 'Connection rejected by user. Please try again.';
+      } else if (error.code === -32002) {
+        errorMessage = 'MetaMask connection request already pending. Please check MetaMask.';
+      } else if (error.code === -32003) {
+        errorMessage = 'MetaMask is locked. Please unlock MetaMask and try again.';
+      } else if (error.code === -32603) {
+        errorMessage = 'MetaMask internal error. Please try refreshing the page.';
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setMetaMaskError(errorMessage);
+      throw new Error(errorMessage);
     }
   };
 
@@ -72,74 +213,93 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setWalletConnection({
       isConnected: false,
     });
+    setMetaMaskError(null);
   };
-
-  // Mock login function
-  const login = async (email: string, password: string) => {
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1000));
-    
-    // Simple validation
-    if (email && password) {
-      setUserAuth({
-        isLoggedIn: true,
-        email,
-      });
-    } else {
-      throw new Error('Invalid credentials');
-    }
-  };
-
-  // Logout function
-  const logout = () => {
-    setUserAuth({
-      isLoggedIn: false,
-    });
-  };
-
-  // Check if Yield Aggregator should be unlocked
-  const isYieldAggregatorUnlocked = walletConnection.isConnected || userAuth.isLoggedIn;
 
   // Listen for wallet changes
   useEffect(() => {
-    if (isMetaMaskAvailable && window.ethereum) {
+    const provider = getMetaMaskProvider();
+    
+    if (provider) {
       const handleAccountsChanged = (accounts: string[]) => {
+        console.log('Accounts changed:', accounts);
         if (accounts.length === 0) {
           disconnectWallet();
         } else {
           setWalletConnection(prev => ({
             ...prev,
-            address: accounts[0],
+            address: accounts[0]
           }));
         }
       };
 
       const handleChainChanged = (chainId: string) => {
+        console.log('Chain changed:', chainId);
         setWalletConnection(prev => ({
           ...prev,
-          chainId: parseInt(chainId, 16),
+          chainId: parseInt(chainId, 16)
         }));
       };
 
-      window.ethereum.on('accountsChanged', handleAccountsChanged);
-      window.ethereum.on('chainChanged', handleChainChanged);
+      const handleConnect = (connectInfo: any) => {
+        console.log('Wallet connected:', connectInfo);
+      };
 
+      const handleDisconnect = (error: any) => {
+        console.log('Wallet disconnected:', error);
+        disconnectWallet();
+      };
+
+      // Add event listeners
+      provider.on('accountsChanged', handleAccountsChanged as (...args: unknown[]) => void);
+      provider.on('chainChanged', handleChainChanged as (...args: unknown[]) => void);
+      provider.on('connect', handleConnect as (...args: unknown[]) => void);
+      provider.on('disconnect', handleDisconnect as (...args: unknown[]) => void);
+
+      // Cleanup
       return () => {
-        if (window.ethereum) {
-          window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
-          window.ethereum.removeListener('chainChanged', handleChainChanged);
-        }
+        provider.removeListener('accountsChanged', handleAccountsChanged as (...args: unknown[]) => void);
+        provider.removeListener('chainChanged', handleChainChanged as (...args: unknown[]) => void);
+        provider.removeListener('connect', handleConnect as (...args: unknown[]) => void);
+        provider.removeListener('disconnect', handleDisconnect as (...args: unknown[]) => void);
       };
     }
-  }, [isMetaMaskAvailable]);
+  }, []);
+
+  // Check for existing connection on mount
+  useEffect(() => {
+    const checkExistingConnection = async () => {
+      try {
+        const provider = getMetaMaskProvider();
+        if (provider) {
+          const accounts = await provider.request({ method: 'eth_accounts' }) as string[];
+          if (accounts && accounts.length > 0) {
+            const account = accounts[0];
+            const chainId = await provider.request({ method: 'eth_chainId' }) as string;
+            setWalletConnection({
+              isConnected: true,
+              address: account,
+              chainId: parseInt(chainId, 16)
+            });
+          }
+        }
+      } catch {
+        // Ignore errors when checking existing connection
+      }
+    };
+
+    checkExistingConnection();
+  }, []);
+
+  // Check if Yield Aggregator should be unlocked
+  const isYieldAggregatorUnlocked = walletConnection.isConnected;
 
   const value: AuthContextType = {
     walletConnection,
-    userAuth,
+    isMetaMaskAvailable,
+    metaMaskError,
     connectWallet,
     disconnectWallet,
-    login,
-    logout,
     isYieldAggregatorUnlocked,
   };
 

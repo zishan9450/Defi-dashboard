@@ -19,13 +19,11 @@ import {
 import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface SidebarProps {
-  isCollapsed: boolean;
-  onToggle: () => void;
   isMobileOpen?: boolean;
   onMobileClose?: () => void;
 }
 
-export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: SidebarProps) {
+export function Sidebar({ isMobileOpen, onMobileClose }: SidebarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const { walletConnection } = useAuth();
@@ -83,8 +81,6 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
     
     router.push(href);
   };
-
-
 
   // Mobile overlay
   if (isMobile && isMobileOpen) {
@@ -185,13 +181,9 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
     );
   }
 
-  // Desktop Sidebar - floating overlay with shadow
-  if (isCollapsed) {
-    return null; // Return nothing when collapsed
-  }
-
+  // Desktop Sidebar - always visible on large screens
   return (
-    <div className="fixed left-0 top-0 h-full w-64 bg-background border-r shadow-2xl z-[60] lg:block">
+    <div className="hidden lg:block fixed left-0 top-0 h-full w-64 bg-background border-r shadow-2xl z-[60]">
       <div className="flex flex-col h-full">
         {/* Header */}
         <div className="flex items-center justify-between p-4 border-b">
@@ -199,14 +191,6 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
             <Home className="h-6 w-6 text-primary" />
             <span className="font-bold text-lg text-foreground">DeFi</span>
           </div>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onToggle}
-            className="h-8 w-8 p-0"
-          >
-            <X className="h-4 w-4" />
-          </Button>
         </div>
 
         {/* Navigation */}
@@ -234,22 +218,22 @@ export function Sidebar({ isCollapsed, onToggle, isMobileOpen, onMobileClose }: 
               <Filter className="h-4 w-4 text-muted-foreground" />
               <span className="text-sm font-medium text-muted-foreground">Categories</span>
             </div>
-                            <div className="space-y-2">
-                  {categoryFilters.map((category) => {
-                    const IconComponent = category.icon;
-                    return (
-                      <Button
-                        key={category.name}
-                        variant="ghost"
-                        size="sm"
-                        className={`w-full justify-start gap-2 h-8 px-2 ${category.color}`}
-                      >
-                        <IconComponent className="h-3 w-3" />
-                        <span className="text-xs">{category.name}</span>
-                      </Button>
-                    );
-                  })}
-                </div>
+            <div className="space-y-2">
+              {categoryFilters.map((category) => {
+                const IconComponent = category.icon;
+                return (
+                  <Button
+                    key={category.name}
+                    variant="ghost"
+                    size="sm"
+                    className={`w-full justify-start gap-2 h-8 px-2 ${category.color}`}
+                  >
+                    <IconComponent className="h-3 w-3" />
+                    <span className="text-xs">{category.name}</span>
+                  </Button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
