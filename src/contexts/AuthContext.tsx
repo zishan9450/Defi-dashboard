@@ -1,20 +1,26 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 'use client';
 
-import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useEffect, useState, ReactNode, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
+import WalletConnectProvider from '@walletconnect/web3-provider';
+import { WalletConnectModal } from '@walletconnect/modal';
+import { WALLET_CONNECT_CONFIG } from '@/lib/walletconnect';
 
 interface WalletConnection {
   isConnected: boolean;
   address?: string;
   chainId?: number;
+  walletType?: 'metamask' | 'walletconnect';
 }
 
 interface AuthContextType {
   walletConnection: WalletConnection;
   isMetaMaskAvailable: boolean;
+  isWalletConnectAvailable: boolean;
   metaMaskError: string | null;
   connectWallet: () => Promise<void>;
+  connectWalletConnect: () => Promise<void>;
   disconnectWallet: () => void;
   isYieldAggregatorUnlocked: boolean;
   refreshMetaMaskDetection: () => void;
@@ -40,9 +46,35 @@ export function AuthProvider({ children }: AuthProviderProps) {
   });
   const [metaMaskError, setMetaMaskError] = useState<string | null>(null);
   const [isMetaMaskAvailable, setIsMetaMaskAvailable] = useState(false);
+  const hasShownMetaMaskToast = useRef(false);
+  const walletConnectProvider = useRef<WalletConnectProvider | null>(null);
+  const walletConnectModal = useRef<WalletConnectModal | null>(null);
+
+  // Initialize WalletConnect
+  useEffect(() => {
+    // Initialize WalletConnect Modal
+    walletConnectModal.current = new WalletConnectModal({
+      projectId: WALLET_CONNECT_CONFIG.projectId,
+      chains: WALLET_CONNECT_CONFIG.chains,
+      themeMode: WALLET_CONNECT_CONFIG.modal.themeMode,
+      themeVariables: WALLET_CONNECT_CONFIG.modal.themeVariables,
+    });
+
+    // Initialize WalletConnect Provider
+    walletConnectProvider.current = new WalletConnectProvider({
+      rpc: WALLET_CONNECT_CONFIG.rpc,
+      qrcode: false, // We'll use our custom modal
+    });
+
+    return () => {
+      if (walletConnectProvider.current) {
+        walletConnectProvider.current.disconnect();
+      }
+    };
+  }, []);
 
   // Check if MetaMask is available
-  const checkMetaMaskAvailability = () => {
+  const checkMetaMaskAvailability = useCallback(() => {
     if (typeof window === 'undefined') return false;
     
     // Method 1: Check if ethereum object exists and has isMetaMask property
@@ -75,14 +107,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
     
     console.log('No MetaMask detected');
     return false;
-  };
+  }, []);
 
   // Update MetaMask availability state
-  const updateMetaMaskAvailability = () => {
+  const updateMetaMaskAvailability = useCallback(() => {
     const available = checkMetaMaskAvailability();
     const wasAvailable = isMetaMaskAvailable;
     
-    if (available && !wasAvailable) {
+    // Only show toast when MetaMask becomes available for the first time in this session
+    if (available && !wasAvailable && !hasShownMetaMaskToast.current) {
+      hasShownMetaMaskToast.current = true;
       toast.success('MetaMask detected! You can now connect your wallet.', {
         description: 'The wallet connection is now available.',
         duration: 5000,
@@ -91,7 +125,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     
     setIsMetaMaskAvailable(available);
     return available;
-  };
+  }, [isMetaMaskAvailable, checkMetaMaskAvailability]);
 
   // Check MetaMask availability on mount and when window gains focus
   useEffect(() => {
@@ -120,10 +154,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       clearInterval(intervalId);
     };
-  }, []);
+  }, [updateMetaMaskAvailability]);
 
   // Get the correct MetaMask provider
-  const getMetaMaskProvider = (): { 
+  const getMetaMaskProvider = useCallback((): { 
     request: (args: { method: string; params?: unknown[] }) => Promise<unknown>;
     on: (event: string, callback: (...args: unknown[]) => void) => void;
     removeListener: (event: string, callback: (...args: unknown[]) => void) => void;
@@ -158,10 +192,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
       on: (event: string, callback: (...args: unknown[]) => void) => void;
       removeListener: (event: string, callback: (...args: unknown[]) => void) => void;
     } }).ethereum || null;
-  };
+  }, []);
 
   // Connect to MetaMask wallet with enhanced error handling
-  const connectWallet = async () => {
+  const connectWallet = useCallback(async () => {
     try {
       setMetaMaskError(null);
       
@@ -183,7 +217,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
           setWalletConnection({
             isConnected: true,
             address: account,
-            chainId: parseInt(chainId, 16)
+            chainId: parseInt(chainId, 16),
+            walletType: 'metamask'
           });
           return;
         }
@@ -225,7 +260,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setWalletConnection({
           isConnected: true,
           address: account,
-          chainId: parseInt(chainId, 16)
+          chainId: parseInt(chainId, 16),
+          walletType: 'metamask'
         });
         console.log('Wallet connected successfully:', account);
       } else {
@@ -254,15 +290,69 @@ export function AuthProvider({ children }: AuthProviderProps) {
       setMetaMaskError(errorMessage);
       throw new Error(errorMessage);
     }
-  };
+  }, [getMetaMaskProvider]);
+
+  // Connect to WalletConnect
+  const connectWalletConnect = useCallback(async () => {
+    try {
+      setMetaMaskError(null);
+      
+      if (!walletConnectProvider.current) {
+        throw new Error('WalletConnect not initialized');
+      }
+
+      // Enable the provider
+      await walletConnectProvider.current.enable();
+      
+      // Get accounts and chain ID
+      const accounts = await walletConnectProvider.current.request({ method: 'eth_accounts' }) as string[];
+      const chainId = await walletConnectProvider.current.request({ method: 'eth_chainId' }) as string;
+      
+      if (accounts && accounts.length > 0) {
+        setWalletConnection({
+          isConnected: true,
+          address: accounts[0],
+          chainId: parseInt(chainId, 16),
+          walletType: 'walletconnect'
+        });
+        
+        toast.success('Wallet connected via WalletConnect!', {
+          description: `Connected to ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`,
+          duration: 5000,
+        });
+      } else {
+        throw new Error('No accounts found');
+      }
+    } catch (error: any) {
+      console.error('Error connecting WalletConnect:', error);
+      
+      let errorMessage = 'Failed to connect WalletConnect. Please try again.';
+      if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      setMetaMaskError(errorMessage);
+      toast.error('WalletConnect Connection Failed', {
+        description: errorMessage,
+        duration: 5000,
+      });
+    }
+  }, []);
 
   // Disconnect wallet
-  const disconnectWallet = () => {
+  const disconnectWallet = useCallback(() => {
+    // Disconnect based on wallet type
+    if (walletConnection.walletType === 'walletconnect' && walletConnectProvider.current) {
+      walletConnectProvider.current.disconnect();
+    }
+    
     setWalletConnection({
       isConnected: false,
     });
     setMetaMaskError(null);
-  };
+    // Reset the toast flag so user can get the toast again if they reconnect
+    hasShownMetaMaskToast.current = false;
+  }, [walletConnection.walletType]);
 
   // Listen for wallet changes
   useEffect(() => {
@@ -312,46 +402,91 @@ export function AuthProvider({ children }: AuthProviderProps) {
         provider.removeListener('disconnect', handleDisconnect as (...args: unknown[]) => void);
       };
     }
-  }, []);
+  }, [disconnectWallet, getMetaMaskProvider]);
+
+  // Listen for WalletConnect events
+  useEffect(() => {
+    if (walletConnectProvider.current) {
+      const handleWalletConnectDisconnect = () => {
+        console.log('WalletConnect disconnected');
+        disconnectWallet();
+      };
+
+      const handleWalletConnectAccountsChanged = (accounts: string[]) => {
+        console.log('WalletConnect accounts changed:', accounts);
+        if (accounts.length === 0) {
+          disconnectWallet();
+        } else {
+          setWalletConnection(prev => ({
+            ...prev,
+            address: accounts[0]
+          }));
+        }
+      };
+
+      const handleWalletConnectChainChanged = (chainId: string) => {
+        console.log('WalletConnect chain changed:', chainId);
+        setWalletConnection(prev => ({
+          ...prev,
+          chainId: parseInt(chainId, 16)
+        }));
+      };
+
+      walletConnectProvider.current.on('disconnect', handleWalletConnectDisconnect);
+      walletConnectProvider.current.on('accountsChanged', handleWalletConnectAccountsChanged);
+      walletConnectProvider.current.on('chainChanged', handleWalletConnectChainChanged);
+
+      return () => {
+        walletConnectProvider.current?.removeListener('disconnect', handleWalletConnectDisconnect);
+        walletConnectProvider.current?.removeListener('accountsChanged', handleWalletConnectAccountsChanged);
+        walletConnectProvider.current?.removeListener('chainChanged', handleWalletConnectChainChanged);
+      };
+    }
+  }, [disconnectWallet]);
 
   // Check for existing connection on mount
-  useEffect(() => {
-    const checkExistingConnection = async () => {
-      try {
-        const provider = getMetaMaskProvider();
-        if (provider) {
-          const accounts = await provider.request({ method: 'eth_accounts' }) as string[];
-          if (accounts && accounts.length > 0) {
-            const account = accounts[0];
-            const chainId = await provider.request({ method: 'eth_chainId' }) as string;
-            setWalletConnection({
-              isConnected: true,
-              address: account,
-              chainId: parseInt(chainId, 16)
-            });
-          }
+  const checkExistingConnection = useCallback(async () => {
+    try {
+      const provider = getMetaMaskProvider();
+      if (provider) {
+        const accounts = await provider.request({ method: 'eth_accounts' }) as string[];
+        if (accounts && accounts.length > 0) {
+          const account = accounts[0];
+          const chainId = await provider.request({ method: 'eth_chainId' }) as string;
+          setWalletConnection({
+            isConnected: true,
+            address: account,
+            chainId: parseInt(chainId, 16),
+            walletType: 'metamask'
+          });
         }
-      } catch {
-        // Ignore errors when checking existing connection
       }
-    };
+    } catch {
+      // Ignore errors when checking existing connection
+    }
+  }, []); // getMetaMaskProvider is stable, no need to include it
 
+  useEffect(() => {
     checkExistingConnection();
-  }, []);
+  }, [checkExistingConnection]);
 
   // Check if Yield Aggregator should be unlocked
   const isYieldAggregatorUnlocked = walletConnection.isConnected;
 
   // Manual refresh function for MetaMask detection
-  const refreshMetaMaskDetection = () => {
+  const refreshMetaMaskDetection = useCallback(() => {
+    // Reset the toast flag so user can get the toast again if MetaMask becomes available
+    hasShownMetaMaskToast.current = false;
     updateMetaMaskAvailability();
-  };
+  }, [updateMetaMaskAvailability]);
 
   const value: AuthContextType = {
     walletConnection,
     isMetaMaskAvailable,
+    isWalletConnectAvailable: true, // WalletConnect is always available
     metaMaskError,
     connectWallet,
+    connectWalletConnect,
     disconnectWallet,
     isYieldAggregatorUnlocked,
     refreshMetaMaskDetection,

@@ -13,7 +13,7 @@ export function WalletConnectionDialog() {
   const [isMobile, setIsMobile] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const { walletConnection, isMetaMaskAvailable, metaMaskError, connectWallet, disconnectWallet, refreshMetaMaskDetection } = useAuth();
+  const { walletConnection, isMetaMaskAvailable, metaMaskError, connectWallet, connectWalletConnect, disconnectWallet, refreshMetaMaskDetection } = useAuth();
 
   // Detect if user is on mobile
   React.useEffect(() => {
@@ -66,6 +66,19 @@ export function WalletConnectionDialog() {
       setIsOpen(false);
     } catch (error: any) {
       console.error('Failed to connect wallet:', error);
+      // Error is already handled in AuthContext
+    } finally {
+      setIsConnecting(false);
+    }
+  };
+
+  const handleConnectWalletConnect = async () => {
+    try {
+      setIsConnecting(true);
+      await connectWalletConnect();
+      setIsOpen(false);
+    } catch (error: any) {
+      console.error('Failed to connect WalletConnect:', error);
       // Error is already handled in AuthContext
     } finally {
       setIsConnecting(false);
@@ -176,6 +189,49 @@ export function WalletConnectionDialog() {
             </div>
           )}
 
+          {/* WalletConnect option - always available */}
+          <div className="p-4 border border-blue-200 bg-blue-50 rounded-lg">
+            <div className="flex items-center gap-2 text-blue-800">
+              <Wallet className="h-5 w-5" />
+              <span className="font-medium">WalletConnect Available</span>
+            </div>
+            <p className="text-sm text-blue-700 mt-1">
+              Connect with any mobile wallet app using WalletConnect. Works with MetaMask Mobile, Trust Wallet, and 200+ other wallets.
+            </p>
+          </div>
+
+          {/* Connection buttons */}
+          <div className="space-y-3">
+            {isMetaMaskAvailable && (
+              <Button 
+                onClick={handleConnect} 
+                disabled={isConnecting}
+                className="w-full gap-2"
+              >
+                {isConnecting ? (
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                ) : (
+                  <Wallet className="h-4 w-4" />
+                )}
+                {isConnecting ? 'Connecting...' : 'Connect with MetaMask'}
+              </Button>
+            )}
+            
+            <Button 
+              onClick={handleConnectWalletConnect} 
+              disabled={isConnecting}
+              variant="outline"
+              className="w-full gap-2"
+            >
+              {isConnecting ? (
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+              ) : (
+                <Wallet className="h-4 w-4" />
+              )}
+              {isConnecting ? 'Connecting...' : 'Connect with WalletConnect'}
+            </Button>
+          </div>
+
           {/* Error message */}
           {metaMaskError && (
             <div className="p-4 border border-red-200 bg-red-50 rounded-lg">
@@ -194,31 +250,6 @@ export function WalletConnectionDialog() {
             </div>
           )}
 
-          {/* Connect Button */}
-          <Button 
-            onClick={handleConnect} 
-            className="w-full gap-2"
-            size="lg"
-            disabled={isConnecting}
-          >
-            {isConnecting ? (
-              <>
-                <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                Connecting...
-              </>
-            ) : !isMetaMaskAvailable ? (
-              <>
-                <Download className="h-5 w-5" />
-                {isMobile ? 'Install MetaMask App' : 'Install MetaMask'}
-              </>
-            ) : (
-              <>
-                <Wallet className="h-5 w-5" />
-                Connect MetaMask
-              </>
-            )}
-          </Button>
-          
           {/* Help text */}
           <div className="text-center space-y-2">
             {!isMetaMaskAvailable ? (
