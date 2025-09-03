@@ -193,10 +193,10 @@ export function WalletConnectionDialog() {
           <div className="p-4 border border-blue-200 bg-blue-50 rounded-lg">
             <div className="flex items-center gap-2 text-blue-800">
               <Wallet className="h-5 w-5" />
-              <span className="font-medium">WalletConnect Available</span>
+              <span className="font-medium">Mobile Wallet Connection</span>
             </div>
             <p className="text-sm text-blue-700 mt-1">
-              Connect with any mobile wallet app using WalletConnect. Works with MetaMask Mobile, Trust Wallet, and 200+ other wallets.
+              Connect with your mobile wallet app. Works with MetaMask Mobile, Trust Wallet, and other mobile wallet apps.
             </p>
           </div>
 
@@ -228,7 +228,7 @@ export function WalletConnectionDialog() {
               ) : (
                 <Wallet className="h-4 w-4" />
               )}
-              {isConnecting ? 'Connecting...' : 'Connect with WalletConnect'}
+              {isConnecting ? 'Connecting...' : 'Connect Mobile Wallet'}
             </Button>
           </div>
 

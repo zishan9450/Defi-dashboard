@@ -3,9 +3,6 @@
 
 import React, { createContext, useContext, useEffect, useState, ReactNode, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
-import WalletConnectProvider from '@walletconnect/web3-provider';
-import { WalletConnectModal } from '@walletconnect/modal';
-import { WALLET_CONNECT_CONFIG } from '@/lib/walletconnect';
 
 interface WalletConnection {
   isConnected: boolean;
@@ -17,7 +14,6 @@ interface WalletConnection {
 interface AuthContextType {
   walletConnection: WalletConnection;
   isMetaMaskAvailable: boolean;
-  isWalletConnectAvailable: boolean;
   metaMaskError: string | null;
   connectWallet: () => Promise<void>;
   connectWalletConnect: () => Promise<void>;
@@ -47,31 +43,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const [metaMaskError, setMetaMaskError] = useState<string | null>(null);
   const [isMetaMaskAvailable, setIsMetaMaskAvailable] = useState(false);
   const hasShownMetaMaskToast = useRef(false);
-  const walletConnectProvider = useRef<WalletConnectProvider | null>(null);
-  const walletConnectModal = useRef<WalletConnectModal | null>(null);
-
-  // Initialize WalletConnect
-  useEffect(() => {
-    // Initialize WalletConnect Modal
-    walletConnectModal.current = new WalletConnectModal({
-      projectId: WALLET_CONNECT_CONFIG.projectId,
-      chains: WALLET_CONNECT_CONFIG.chains,
-      themeMode: WALLET_CONNECT_CONFIG.modal.themeMode,
-      themeVariables: WALLET_CONNECT_CONFIG.modal.themeVariables,
-    });
-
-    // Initialize WalletConnect Provider
-    walletConnectProvider.current = new WalletConnectProvider({
-      rpc: WALLET_CONNECT_CONFIG.rpc,
-      qrcode: false, // We'll use our custom modal
-    });
-
-    return () => {
-      if (walletConnectProvider.current) {
-        walletConnectProvider.current.disconnect();
-      }
-    };
-  }, []);
 
   // Check if MetaMask is available
   const checkMetaMaskAvailability = useCallback(() => {
@@ -292,58 +263,80 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, [getMetaMaskProvider]);
 
-  // Connect to WalletConnect
+  // Connect to Mobile Wallet
   const connectWalletConnect = useCallback(async () => {
     try {
       setMetaMaskError(null);
       
-      if (!walletConnectProvider.current) {
-        throw new Error('WalletConnect not initialized');
-      }
-
-      // Enable the provider
-      await walletConnectProvider.current.enable();
+      // Check if we're on mobile
+      const isMobile = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
+        navigator.userAgent.toLowerCase()
+      );
       
-      // Get accounts and chain ID
-      const accounts = await walletConnectProvider.current.request({ method: 'eth_accounts' }) as string[];
-      const chainId = await walletConnectProvider.current.request({ method: 'eth_chainId' }) as string;
-      
-      if (accounts && accounts.length > 0) {
-        setWalletConnection({
-          isConnected: true,
-          address: accounts[0],
-          chainId: parseInt(chainId, 16),
-          walletType: 'walletconnect'
-        });
+      if (isMobile) {
+        // For mobile, try to open MetaMask Mobile app
+        const userAgent = navigator.userAgent.toLowerCase();
         
-        toast.success('Wallet connected via WalletConnect!', {
-          description: `Connected to ${accounts[0].slice(0, 6)}...${accounts[0].slice(-4)}`,
+        if (/android/i.test(userAgent)) {
+          // Try to open MetaMask Mobile on Android
+          window.location.href = 'metamask://';
+          
+          // Fallback to Play Store if app not installed
+          setTimeout(() => {
+            window.open('https://play.google.com/store/apps/details?id=io.metamask', '_blank');
+          }, 2000);
+        } else if (/iphone|ipad|ipod/i.test(userAgent)) {
+          // Try to open MetaMask Mobile on iOS
+          window.location.href = 'metamask://';
+          
+          // Fallback to App Store if app not installed
+          setTimeout(() => {
+            window.open('https://apps.apple.com/us/app/metamask-blockchain-wallet/id1438144202', '_blank');
+          }, 2000);
+        } else {
+          // Other mobile platforms
+          window.open('https://metamask.io/download/', '_blank');
+        }
+        
+        toast.info('Opening mobile wallet app...', {
+          description: 'Please complete the connection in your wallet app.',
           duration: 5000,
         });
+        
+        return;
       } else {
-        throw new Error('No accounts found');
+        // On desktop, fall back to MetaMask extension
+        if (isMetaMaskAvailable) {
+          await connectWallet();
+        } else {
+          throw new Error('MetaMask is not available on desktop. Please install the extension.');
+        }
       }
     } catch (error: any) {
-      console.error('Error connecting WalletConnect:', error);
+      console.error('Error connecting mobile wallet:', error);
       
-      let errorMessage = 'Failed to connect WalletConnect. Please try again.';
+      let errorMessage = 'Failed to connect mobile wallet. Please try again.';
       if (error.message) {
         errorMessage = error.message;
       }
       
       setMetaMaskError(errorMessage);
-      toast.error('WalletConnect Connection Failed', {
+      toast.error('Mobile Wallet Connection Failed', {
         description: errorMessage,
         duration: 5000,
       });
     }
-  }, []);
+  }, [isMetaMaskAvailable, connectWallet]);
 
   // Disconnect wallet
   const disconnectWallet = useCallback(() => {
     // Disconnect based on wallet type
-    if (walletConnection.walletType === 'walletconnect' && walletConnectProvider.current) {
-      walletConnectProvider.current.disconnect();
+    if (walletConnection.walletType === 'walletconnect') {
+      // For mobile wallet connections, just clear the state
+      toast.info('Mobile wallet disconnected', {
+        description: 'Please reconnect through your mobile wallet app.',
+        duration: 5000,
+      });
     }
     
     setWalletConnection({
@@ -406,43 +399,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   // Listen for WalletConnect events
   useEffect(() => {
-    if (walletConnectProvider.current) {
-      const handleWalletConnectDisconnect = () => {
-        console.log('WalletConnect disconnected');
-        disconnectWallet();
-      };
-
-      const handleWalletConnectAccountsChanged = (accounts: string[]) => {
-        console.log('WalletConnect accounts changed:', accounts);
-        if (accounts.length === 0) {
-          disconnectWallet();
-        } else {
-          setWalletConnection(prev => ({
-            ...prev,
-            address: accounts[0]
-          }));
-        }
-      };
-
-      const handleWalletConnectChainChanged = (chainId: string) => {
-        console.log('WalletConnect chain changed:', chainId);
-        setWalletConnection(prev => ({
-          ...prev,
-          chainId: parseInt(chainId, 16)
-        }));
-      };
-
-      walletConnectProvider.current.on('disconnect', handleWalletConnectDisconnect);
-      walletConnectProvider.current.on('accountsChanged', handleWalletConnectAccountsChanged);
-      walletConnectProvider.current.on('chainChanged', handleWalletConnectChainChanged);
-
-      return () => {
-        walletConnectProvider.current?.removeListener('disconnect', handleWalletConnectDisconnect);
-        walletConnectProvider.current?.removeListener('accountsChanged', handleWalletConnectAccountsChanged);
-        walletConnectProvider.current?.removeListener('chainChanged', handleWalletConnectChainChanged);
-      };
-    }
-  }, [disconnectWallet]);
+    // No explicit WalletConnect listeners needed here as it's a single-wallet flow
+    // The QR code scanning and connection logic is handled by the mobile wallet app.
+  }, []);
 
   // Check for existing connection on mount
   const checkExistingConnection = useCallback(async () => {
@@ -483,7 +442,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const value: AuthContextType = {
     walletConnection,
     isMetaMaskAvailable,
-    isWalletConnectAvailable: true, // WalletConnect is always available
     metaMaskError,
     connectWallet,
     connectWalletConnect,
