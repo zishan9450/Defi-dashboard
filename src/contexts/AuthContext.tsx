@@ -2,6 +2,7 @@
 'use client';
 
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { toast } from 'sonner';
 
 interface WalletConnection {
   isConnected: boolean;
@@ -16,6 +17,7 @@ interface AuthContextType {
   connectWallet: () => Promise<void>;
   disconnectWallet: () => void;
   isYieldAggregatorUnlocked: boolean;
+  refreshMetaMaskDetection: () => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -37,9 +39,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
     isConnected: false
   });
   const [metaMaskError, setMetaMaskError] = useState<string | null>(null);
+  const [isMetaMaskAvailable, setIsMetaMaskAvailable] = useState(false);
 
   // Check if MetaMask is available
-  const isMetaMaskAvailable = (() => {
+  const checkMetaMaskAvailability = () => {
     if (typeof window === 'undefined') return false;
     
     // Method 1: Check if ethereum object exists and has isMetaMask property
@@ -72,7 +75,52 @@ export function AuthProvider({ children }: AuthProviderProps) {
     
     console.log('No MetaMask detected');
     return false;
-  })();
+  };
+
+  // Update MetaMask availability state
+  const updateMetaMaskAvailability = () => {
+    const available = checkMetaMaskAvailability();
+    const wasAvailable = isMetaMaskAvailable;
+    
+    if (available && !wasAvailable) {
+      toast.success('MetaMask detected! You can now connect your wallet.', {
+        description: 'The wallet connection is now available.',
+        duration: 5000,
+      });
+    }
+    
+    setIsMetaMaskAvailable(available);
+    return available;
+  };
+
+  // Check MetaMask availability on mount and when window gains focus
+  useEffect(() => {
+    updateMetaMaskAvailability();
+    
+    const handleFocus = () => {
+      updateMetaMaskAvailability();
+    };
+    
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        updateMetaMaskAvailability();
+      }
+    };
+    
+    // Periodic check for MetaMask availability (every 3 seconds)
+    const intervalId = setInterval(() => {
+      updateMetaMaskAvailability();
+    }, 3000);
+    
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      clearInterval(intervalId);
+    };
+  }, []);
 
   // Get the correct MetaMask provider
   const getMetaMaskProvider = (): { 
@@ -294,6 +342,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
   // Check if Yield Aggregator should be unlocked
   const isYieldAggregatorUnlocked = walletConnection.isConnected;
 
+  // Manual refresh function for MetaMask detection
+  const refreshMetaMaskDetection = () => {
+    updateMetaMaskAvailability();
+  };
+
   const value: AuthContextType = {
     walletConnection,
     isMetaMaskAvailable,
@@ -301,6 +354,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     connectWallet,
     disconnectWallet,
     isYieldAggregatorUnlocked,
+    refreshMetaMaskDetection,
   };
 
   return (

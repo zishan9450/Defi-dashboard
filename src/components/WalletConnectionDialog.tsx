@@ -6,12 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useAuth } from '@/contexts/AuthContext';
 import { Wallet, Check, AlertCircle, Download } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function WalletConnectionDialog() {
-  const { walletConnection, connectWallet, disconnectWallet, isMetaMaskAvailable, metaMaskError } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
-  const [isConnecting, setIsConnecting] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const { walletConnection, isMetaMaskAvailable, metaMaskError, connectWallet, disconnectWallet, refreshMetaMaskDetection } = useAuth();
 
   // Detect if user is on mobile
   React.useEffect(() => {
@@ -23,6 +25,21 @@ export function WalletConnectionDialog() {
     
     checkMobile();
   }, []);
+
+  const handleRefreshMetaMask = async () => {
+    setIsRefreshing(true);
+    // Refresh MetaMask detection without page reload
+    refreshMetaMaskDetection();
+    toast.success('Checking for MetaMask...', {
+      description: 'Please wait while we detect your wallet.',
+      duration: 3000,
+    });
+    
+    // Add a small delay to show the loading state
+    setTimeout(() => {
+      setIsRefreshing(false);
+    }, 2000);
+  };
 
   const handleConnect = async () => {
     if (!isMetaMaskAvailable) {
@@ -105,6 +122,56 @@ export function WalletConnectionDialog() {
                   ? 'Please install the MetaMask mobile app to connect your wallet.'
                   : 'Please install MetaMask extension to connect your wallet.'
                 }
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleRefreshMetaMask}
+                  className="text-yellow-700 border-yellow-300 hover:bg-yellow-100"
+                  disabled={isRefreshing}
+                >
+                  {isRefreshing ? (
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                  ) : (
+                    <Download className="h-4 w-4 mr-2" />
+                  )}
+                  {isRefreshing ? 'Checking...' : 'Refresh Detection'}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    if (isMobile) {
+                      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+                      if (/android/i.test(userAgent.toLowerCase())) {
+                        window.open('https://play.google.com/store/apps/details?id=io.metamask', '_blank');
+                      } else if (/iphone|ipad|ipod/i.test(userAgent.toLowerCase())) {
+                        window.open('https://apps.apple.com/us/app/metamask-blockchain-wallet/id1438144202', '_blank');
+                      } else {
+                        window.open('https://metamask.io/download/', '_blank');
+                      }
+                    } else {
+                      window.open('https://metamask.io/download/', '_blank');
+                    }
+                  }}
+                  className="text-yellow-700 border-yellow-300 hover:bg-yellow-100"
+                >
+                  Download MetaMask
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* MetaMask available - show connect button */}
+          {isMetaMaskAvailable && (
+            <div className="p-4 border border-green-200 bg-green-50 rounded-lg">
+              <div className="flex items-center gap-2 text-green-800">
+                <Check className="h-5 w-5" />
+                <span className="font-medium">MetaMask Detected!</span>
+              </div>
+              <p className="text-sm text-green-700 mt-1">
+                Great! MetaMask is now available. Click the button below to connect your wallet.
               </p>
             </div>
           )}
