@@ -139,50 +139,62 @@ export default function PoolDetailPage({ params }: PoolDetailPageProps) {
               </div>
               
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <DollarSign className="h-4 w-4" />
-                    TVL
+                {/* TVL Card */}
+                <Card className="p-4 border-l-4 border-l-blue-500">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <DollarSign className="h-4 w-4 text-blue-600" />
+                      TVL
+                    </div>
+                    <p className="text-2xl font-bold text-foreground">
+                      ${(pool.tvlUsd / 1e6).toFixed(1)}M
+                    </p>
                   </div>
-                  <p className="text-2xl font-bold text-card-foreground">
-                    ${(pool.tvlUsd / 1e6).toFixed(1)}M
-                  </p>
-                </div>
+                </Card>
                 
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Activity className="h-4 w-4" />
-                    APY
+                {/* APY Card */}
+                <Card className="p-4 border-l-4 border-l-green-500">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Activity className="h-4 w-4 text-green-600" />
+                      APY
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl font-bold text-foreground">
+                        {pool.apy ? pool.apy.toFixed(2) : '0.00'}%
+                      </span>
+                      {pool.apy && pool.apy > 0 && (
+                        <TrendingUp className="h-4 w-4 text-green-600" />
+                      )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-2xl font-bold text-card-foreground">
-                      {pool.apy ? pool.apy.toFixed(2) : '0.00'}%
-                    </span>
-                    {pool.apy && pool.apy > 0 && (
-                      <TrendingUp className="h-4 w-4 text-green-600" />
-                    )}
-                  </div>
-                </div>
+                </Card>
                 
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Target className="h-4 w-4" />
-                    Prediction
+                {/* Prediction Card */}
+                <Card className="p-4 border-l-4 border-l-purple-500">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Target className="h-4 w-4 text-purple-600" />
+                      Prediction
+                    </div>
+                    <p className="text-2xl font-bold text-foreground truncate">
+                      {formatPrediction(pool.prediction)}
+                    </p>
                   </div>
-                  <p className="text-2xl font-bold text-card-foreground truncate">
-                    {formatPrediction(pool.prediction)}
-                  </p>
-                </div>
+                </Card>
                 
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-muted-foreground">
-                    <Shield className="h-4 w-4" />
-                    Risk (σ)
+                {/* Risk Card */}
+                <Card className="p-4 border-l-4 border-l-orange-500">
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Shield className="h-4 w-4 text-orange-600" />
+                      Risk (σ)
+                    </div>
+                    <p className="text-2xl font-bold text-foreground">
+                      {pool.sigma ? pool.sigma.toFixed(4) : 'N/A'}
+                    </p>
                   </div>
-                  <p className="text-2xl font-bold text-card-foreground">
-                    {pool.sigma ? pool.sigma.toFixed(4) : 'N/A'}
-                  </p>
-                </div>
+                </Card>
               </div>
             </div>
 
